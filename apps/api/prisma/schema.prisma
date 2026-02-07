@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum ThemePreference {
+  light
+  dark
+}
+
+enum ProjectStatus {
+  idea
+  in_progress
+  production
+  finished
+}
+
+enum MemberRole {
+  owner
+  editor
+  viewer
+}
+
+enum InviteStatus {
+  pending
+  accepted
+  declined
+}
+
+enum TaskFlag {
+  none
+  attention
+  blocked
+}
+
+enum NotificationType {
+  invite
+  comment
+  upload
+  status_change
+}
+
+model User {
+  id            String           @id @default(cuid())
+  email         String           @unique
+  username      String           @unique
+  name          String
+  passwordHash  String
+  avatarUrl     String?
+  theme         ThemePreference  @default(light)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  projectsOwned Project[]        @relation("ProjectOwner")
+  memberships   ProjectMember[]  @relation("MemberUser")
+  invitesSent   ProjectMember[]  @relation("MemberInviter")
+  comments      ProjectComment[]
+  trackComments TrackComment[]
+  trackLikes    TrackLike[]
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  fileUploads   FileAsset[]
+  fileVersions  FileVersion[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Project {
+  id          String              @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus       @default(idea)
+  order       Int                 @default(0)
+  tags        Json?
+  archivedAt  DateTime?
+  ownerId     String
+  owner       User                @relation("ProjectOwner", fields: [ownerId], references: [id])
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  members     ProjectMember[]
+  tasks       TaskCard[]
+  comments    ProjectComment[]
+  statusLog   ProjectStatusLog[]
+  files       FileAsset[]
+  tracks      Track[]
+}
+
+model ProjectMember {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id])
+  userId      String?
+  user        User?        @relation("MemberUser", fields: [userId], references: [id])
+  inviteEmail String
+  role        MemberRole   @default(viewer)
+  status      InviteStatus @default(pending)
+  invitedById String
+  invitedBy   User         @relation("MemberInviter", fields: [invitedById], references: [id])
+  createdAt   DateTime     @default(now())
+}
+
+model TaskCard {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  title       String
+  description String?
+  flag        TaskFlag @default(none)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProjectComment {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model ProjectStatusLog {
+  id         String        @id @default(cuid())
+  projectId  String
+  project    Project       @relation(fields: [projectId], references: [id])
+  fromStatus ProjectStatus
+  toStatus   ProjectStatus
+  changedBy  String
+  createdAt  DateTime      @default(now())
+}
+
+model FileAsset {
+  id         String       @id @default(cuid())
+  projectId  String
+  project    Project      @relation(fields: [projectId], references: [id])
+  uploaderId String
+  uploader   User         @relation(fields: [uploaderId], references: [id])
+  name       String
+  type       String
+  url        String
+  storageKey String
+  createdAt  DateTime     @default(now())
+
+  versions   FileVersion[]
+}
+
+model FileVersion {
+  id        String   @id @default(cuid())
+  fileId    String
+  file      FileAsset @relation(fields: [fileId], references: [id])
+  version   String
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Track {
+  id          String        @id @default(cuid())
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id])
+  title       String
+  description String?
+  audioUrl    String
+  coverUrl    String?
+  isPublic    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+
+  likes       TrackLike[]
+  comments    TrackComment[]
+  plays       TrackPlay[]
+}
+
+model TrackLike {
+  id        String   @id @default(cuid())
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model TrackComment {
+  id        String   @id @default(cuid())
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model TrackPlay {
+  id        String   @id @default(cuid())
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id])
+  userId    String?
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  message   String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+}

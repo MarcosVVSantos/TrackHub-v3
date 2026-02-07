@@ -1,0 +1,330 @@
+import { useEffect, useMemo, useState } from "react";
+import { API_URL, apiRequest, getAccessToken } from "../api/client";
+import Skeleton from "../components/Skeleton";
+import { KanbanSquare, List, Plus } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import CreateProjectModal from "../components/projects/CreateProjectModal";
+import TagFilter from "../components/projects/TagFilter";
+import ProjectCard from "../components/projects/ProjectCard";
+import AddPartnerModal from "../components/projects/AddPartnerModal";
+import EditProjectModal from "../components/projects/EditProjectModal";
+import ProjectHistoryDrawer from "../components/projects/ProjectHistoryDrawer";
+
+const statusLabels = {
+  idea: "Ideia",
+  in_progress: "Em andamento",
+  production: "Produção",
+  finished: "Finalizado",
+};
+
+function Projects() {
+  const [projects, setProjects] = useState(null);
+  const [view, setView] = useState("list");
+  const [error, setError] = useState("");
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedStatus, setSelectedStatus] = useState([]);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [partnerProject, setPartnerProject] = useState(null);
+  const [editProject, setEditProject] = useState(null);
+  const [historyProject, setHistoryProject] = useState(null);
+  const [activeAudio, setActiveAudio] = useState(null);
+  const [activeProjectId, setActiveProjectId] = useState(null);
+
+  async function loadProjects() {
+    try {
+      const token = getAccessToken();
+      const params = new URLSearchParams();
+      if (selectedTags.length) params.set("tags", selectedTags.join(","));
+      if (selectedStatus.length) params.set("status", selectedStatus.join(","));
+      const data = await apiRequest(`/projects?${params.toString()}`, { token });
+      setProjects(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function loadTags() {
+    try {
+      const token = getAccessToken();
+      const data = await apiRequest("/projects/tags", { token });
+      setAvailableTags(data);
+    } catch (err) {
+      setAvailableTags([]);
+    }
+  }
+
+  useEffect(() => {
+    loadProjects();
+  }, [selectedTags, selectedStatus]);
+
+  useEffect(() => {
+    loadTags();
+  }, []);
+
+  const grouped = useMemo(() => {
+    if (!projects) return {};
+    return projects.reduce((acc, project) => {
+      const status = project.status;
+      acc[status] = acc[status] || [];
+      acc[status].push(project);
+      return acc;
+    }, {});
+  }, [projects]);
+
+  async function handleDragEnd(result) {
+    if (!result.destination) return;
+    const { source, destination, draggableId } = result;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) {
+      return;
+    }
+
+    const token = getAccessToken();
+    const updated = { ...grouped };
+    const sourceList = Array.from(updated[source.droppableId] || []);
+    const [moved] = sourceList.splice(source.index, 1);
+    const destList = Array.from(updated[destination.droppableId] || []);
+    destList.splice(destination.index, 0, moved);
+    updated[source.droppableId] = sourceList;
+    updated[destination.droppableId] = destList;
+
+    const updates = [];
+    updated[destination.droppableId].forEach((project, index) => {
+      updates.push(
+        apiRequest(`/projects/${project.id}/order`, {
+          method: "PUT",
+          body: { order: index + 1, status: destination.droppableId },
+          token,
+        })
+      );
+    });
+    if (source.droppableId !== destination.droppableId) {
+      updated[source.droppableId].forEach((project, index) => {
+        updates.push(
+          apiRequest(`/projects/${project.id}/order`, {
+            method: "PUT",
+            body: { order: index + 1, status: source.droppableId },
+            token,
+          })
+        );
+      });
+    }
+    await Promise.all(updates);
+    loadProjects();
+  }
+
+  function toggleTag(tag) {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((value) => value !== tag) : [...prev, tag]
+    );
+  }
+
+  function toggleStatus(status) {
+    setSelectedStatus((prev) =>
+      prev.includes(status) ? prev.filter((value) => value !== status) : [...prev, status]
+    );
+  }
+
+  async function handlePlay(project) {
+    if (activeProjectId === project.id) {
+      if (activeAudio) {
+        URL.revokeObjectURL(activeAudio);
+      }
+      setActiveAudio(null);
+      setActiveProjectId(null);
+      return;
+    }
+
+    try {
+      const token = getAccessToken();
+      const response = await fetch(`${API_URL}/projects/${project.id}/audio`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        throw new Error("Não foi possível reproduzir o áudio");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      if (activeAudio) {
+        URL.revokeObjectURL(activeAudio);
+      }
+      setActiveAudio(url);
+      setActiveProjectId(project.id);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function handleTagClick(tag) {
+    toggleTag(tag);
+  }
+
+  if (error) {
+    return <div className="mx-auto max-w-6xl p-6 text-red-500">{error}</div>;
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold text-brand-primary">Projetos</h2>
+          <p className="text-sm text-gray-500">Crie, organize e colabore com fluidez.</p>
+        </div>
+        <button className="btn-primary" type="button" onClick={() => setOpenModal(true)}>
+          <Plus size={16} />
+          Novo projeto
+        </button>
+      </div>
+
+      <div className="card space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-brand-primary">Filtros</p>
+            <p className="text-xs text-gray-500">Selecione tags e status.</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              className={view === "list" ? "btn-primary" : "btn-secondary"}
+              onClick={() => setView("list")}
+            >
+              <List size={16} />
+              Lista
+            </button>
+            <button
+              className={view === "kanban" ? "btn-primary" : "btn-secondary"}
+              onClick={() => setView("kanban")}
+            >
+              <KanbanSquare size={16} />
+              Kanban
+            </button>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <TagFilter tags={availableTags} selected={selectedTags} onToggle={toggleTag} />
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(statusLabels).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => toggleStatus(value)}
+                className={`rounded-full border px-3 py-1 text-xs transition ${
+                  selectedStatus.includes(value)
+                    ? "border-brand-primary bg-brand-accent/20 text-brand-primary"
+                    : "border-gray-200 text-gray-500 hover:border-brand-primary"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {!projects ? (
+        <Skeleton lines={6} />
+      ) : view === "list" ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {projects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onPlay={handlePlay}
+              onPartner={setPartnerProject}
+              onEdit={setEditProject}
+              onHistory={setHistoryProject}
+              onTagClick={handleTagClick}
+              isPlaying={activeProjectId === project.id}
+              statusLabel={statusLabels[project.status]}
+              hasAudio={project.files?.length || project.tracks?.length}
+            />
+          ))}
+        </div>
+      ) : (
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="grid gap-4 md:grid-cols-4">
+            {Object.entries(statusLabels).map(([status, label]) => (
+              <Droppable key={status} droppableId={status}>
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="card space-y-3"
+                  >
+                    <h3 className="text-sm font-semibold text-brand-primary">{label}</h3>
+                    <div className="flex flex-col gap-3">
+                      {(grouped[status] || []).map((project, index) => (
+                        <Draggable key={project.id} draggableId={project.id} index={index}>
+                          {(dragProvided) => (
+                            <div
+                              ref={dragProvided.innerRef}
+                              {...dragProvided.draggableProps}
+                              {...dragProvided.dragHandleProps}
+                              className="rounded-xl border border-gray-100 bg-white p-4 text-sm shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-darkSecondary dark:bg-[#2e1248]"
+                            >
+                              <ProjectCard
+                                project={project}
+                                onPlay={handlePlay}
+                                onPartner={setPartnerProject}
+                                onEdit={setEditProject}
+                                onHistory={setHistoryProject}
+                                onTagClick={handleTagClick}
+                                isPlaying={activeProjectId === project.id}
+                                statusLabel={statusLabels[project.status]}
+                                hasAudio={project.files?.length || project.tracks?.length}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  </div>
+                )}
+              </Droppable>
+            ))}
+          </div>
+        </DragDropContext>
+      )}
+      {activeAudio && (
+        <div className="card">
+          <audio
+            controls
+            autoPlay
+            src={activeAudio}
+            className="w-full"
+            onEnded={() => {
+              URL.revokeObjectURL(activeAudio);
+              setActiveAudio(null);
+              setActiveProjectId(null);
+            }}
+          />
+        </div>
+      )}
+      <CreateProjectModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        onCreated={loadProjects}
+        tagsSuggestions={availableTags}
+      />
+      <EditProjectModal
+        open={!!editProject}
+        project={editProject}
+        onClose={() => setEditProject(null)}
+        onUpdated={loadProjects}
+        tagsSuggestions={availableTags}
+      />
+      <AddPartnerModal
+        open={!!partnerProject}
+        project={partnerProject}
+        onClose={() => setPartnerProject(null)}
+      />
+      <ProjectHistoryDrawer
+        open={!!historyProject}
+        project={historyProject}
+        onClose={() => setHistoryProject(null)}
+      />
+    </div>
+  );
+}
+
+export default Projects;
