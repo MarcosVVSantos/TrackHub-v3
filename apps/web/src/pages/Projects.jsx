@@ -259,7 +259,7 @@ function Projects() {
                               ref={dragProvided.innerRef}
                               {...dragProvided.draggableProps}
                               {...dragProvided.dragHandleProps}
-                              className="rounded-xl border border-gray-100 bg-white p-4 text-sm shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-darkSecondary dark:bg-[#2e1248]"
+                              className="rounded-xl border border-gray-100 bg-white p-4 text-sm shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-darkOutline dark:bg-brand-darkSecondary"
                             >
                               <ProjectCard
                                 project={project}

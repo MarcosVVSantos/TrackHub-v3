@@ -25,7 +25,7 @@ function ProjectHistoryDrawer({ open, project, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
-      <div className="h-full w-full max-w-md bg-white p-6 shadow-xl dark:bg-[#2e1248]">
+  <div className="h-full w-full max-w-md bg-white p-6 shadow-xl dark:bg-brand-darkSecondary">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Info size={16} />

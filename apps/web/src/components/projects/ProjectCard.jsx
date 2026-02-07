@@ -14,7 +14,7 @@ function ProjectCard({
 }) {
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-darkSecondary dark:bg-[#2e1248]">
+  <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-darkOutline dark:bg-brand-darkSecondary">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-accent/30">

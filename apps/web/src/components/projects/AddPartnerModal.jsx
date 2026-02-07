@@ -32,7 +32,7 @@ function AddPartnerModal({ open, project, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-[#2e1248]">
+  <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-brand-darkSecondary">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-brand-primary">Adicionar parceiro</h3>

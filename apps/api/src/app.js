@@ -11,6 +11,7 @@ const feedRoutes = require("./routes/feed");
 const trackRoutes = require("./routes/tracks");
 const dashboardRoutes = require("./routes/dashboard");
 const notificationRoutes = require("./routes/notifications");
+const followRoutes = require("./routes/follows");
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/feed", feedRoutes);
 app.use("/tracks", trackRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/notifications", notificationRoutes);
+app.use("/follows", followRoutes);
 
 app.use(errorHandler);
 

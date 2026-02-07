@@ -21,7 +21,7 @@ function Login() {
   }
 
   return (
-    <div className="mx-auto mt-16 max-w-md rounded-2xl bg-white p-8 shadow-md dark:bg-[#2e1248]">
+  <div className="mx-auto mt-16 max-w-md rounded-2xl bg-white p-8 shadow-md dark:bg-brand-darkSecondary">
       <h1 className="text-2xl font-semibold text-brand-primary">Entrar</h1>
       <p className="mt-1 text-sm text-gray-500">Acesse sua conta TrackHub</p>
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">

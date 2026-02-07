@@ -65,6 +65,15 @@ model User {
   notifications Notification[]
   fileUploads   FileAsset[]
   fileVersions  FileVersion[]
+  following     Follow[]         @relation("UserFollowing")
+  followers     Follow[]         @relation("UserFollowers")
+  playlists     Playlist[]       @relation("PlaylistCreator")
+  playlistSaves PlaylistSave[]
+  trackSaves    TrackSave[]
+  socialPosts   SocialPost[]     @relation("PostAuthor")
+  socialLikes   SocialPostLike[]
+  socialSaves   SocialPostSave[]
+  socialComments SocialPostComment[]
 }
 
 model RefreshToken {
@@ -95,6 +104,7 @@ model Project {
   statusLog   ProjectStatusLog[]
   files       FileAsset[]
   tracks      Track[]
+  socialPosts SocialPost[]
 }
 
 model ProjectMember {
@@ -181,6 +191,121 @@ model Track {
   likes       TrackLike[]
   comments    TrackComment[]
   plays       TrackPlay[]
+  saves       TrackSave[]
+  playlistTracks PlaylistTrack[]
+  socialPosts    SocialPost[]
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id])
+  followingId String
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model Playlist {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  coverUrl    String?
+  tags        Json?
+  isPublic    Boolean        @default(true)
+  creatorId   String
+  creator     User           @relation("PlaylistCreator", fields: [creatorId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  tracks      PlaylistTrack[]
+  saves       PlaylistSave[]
+  posts       SocialPost[]
+}
+
+model PlaylistTrack {
+  id         String   @id @default(cuid())
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id])
+  trackId    String
+  track      Track    @relation(fields: [trackId], references: [id])
+  order      Int      @default(0)
+  addedAt    DateTime @default(now())
+
+  @@unique([playlistId, trackId])
+}
+
+model PlaylistSave {
+  id         String   @id @default(cuid())
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([playlistId, userId])
+}
+
+model TrackSave {
+  id        String   @id @default(cuid())
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([trackId, userId])
+}
+
+model SocialPost {
+  id         String   @id @default(cuid())
+  authorId   String
+  author     User     @relation("PostAuthor", fields: [authorId], references: [id])
+  content    String
+  projectId  String?
+  project    Project? @relation(fields: [projectId], references: [id])
+  trackId    String?
+  track      Track?   @relation(fields: [trackId], references: [id])
+  playlistId String?
+  playlist   Playlist? @relation(fields: [playlistId], references: [id])
+  createdAt  DateTime @default(now())
+
+  likes      SocialPostLike[]
+  saves      SocialPostSave[]
+  comments   SocialPostComment[]
+}
+
+model SocialPostLike {
+  id        String     @id @default(cuid())
+  postId    String
+  post      SocialPost @relation(fields: [postId], references: [id])
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  createdAt DateTime   @default(now())
+
+  @@unique([postId, userId])
+}
+
+model SocialPostSave {
+  id        String     @id @default(cuid())
+  postId    String
+  post      SocialPost @relation(fields: [postId], references: [id])
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  createdAt DateTime   @default(now())
+
+  @@unique([postId, userId])
+}
+
+model SocialPostComment {
+  id        String     @id @default(cuid())
+  postId    String
+  post      SocialPost @relation(fields: [postId], references: [id])
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime   @default(now())
 }
 
 model TrackLike {

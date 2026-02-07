@@ -45,27 +45,27 @@ function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur dark:border-brand-darkSecondary dark:bg-brand-dark/80">
+    <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur dark:border-brand-darkOutline dark:bg-brand-dark/80">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link to="/" className="text-xl font-semibold text-brand-primary">
           TrackHub
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          <NavLink to="/feed" className="flex items-center gap-2 hover:text-brand-primary">
+        <nav className="flex items-center gap-4 text-sm text-gray-600 dark:text-brand-textMuted">
+          <NavLink to="/feed" className="flex items-center gap-2 hover:text-brand-primary dark:hover:text-brand-text">
             <Globe size={16} />
             Feed
           </NavLink>
           {user && (
             <>
-              <NavLink to="/dashboard" className="flex items-center gap-2 hover:text-brand-primary">
+              <NavLink to="/dashboard" className="flex items-center gap-2 hover:text-brand-primary dark:hover:text-brand-text">
                 <LayoutDashboard size={16} />
                 Dashboard
               </NavLink>
-              <NavLink to="/projects" className="flex items-center gap-2 hover:text-brand-primary">
+              <NavLink to="/projects" className="flex items-center gap-2 hover:text-brand-primary dark:hover:text-brand-text">
                 <FolderKanban size={16} />
                 Projetos
               </NavLink>
-              <NavLink to="/account" className="flex items-center gap-2 hover:text-brand-primary">
+              <NavLink to="/account" className="flex items-center gap-2 hover:text-brand-primary dark:hover:text-brand-text">
                 <UserCircle size={16} />
                 Conta
               </NavLink>
@@ -81,13 +81,15 @@ function Header() {
                   Notificações
                 </button>
                 {open && (
-                  <div className="absolute right-0 mt-2 w-72 rounded-xl border border-gray-100 bg-white p-3 shadow-lg dark:border-brand-darkSecondary dark:bg-[#2e1248]">
-                    <p className="text-xs font-semibold text-gray-400">Recentes</p>
+                  <div className="absolute right-0 mt-2 w-72 rounded-xl border border-gray-100 bg-white p-3 shadow-lg dark:border-brand-darkOutline dark:bg-brand-darkSecondary">
+                    <p className="text-xs font-semibold text-gray-400 dark:text-brand-textMuted">Recentes</p>
                     <div className="mt-2 space-y-2 text-sm">
-                      {notifications.length === 0 && <p className="text-gray-500">Sem notificações</p>}
+                      {notifications.length === 0 && (
+                        <p className="text-gray-500 dark:text-brand-textMuted">Sem notificações</p>
+                      )}
                       {notifications.map((item) => (
-                        <div key={item.id} className="rounded-lg bg-gray-50 p-2 dark:bg-brand-darkSecondary">
-                          <p className="text-gray-600 dark:text-gray-200">{item.message}</p>
+                        <div key={item.id} className="rounded-lg bg-gray-50 p-2 dark:bg-brand-darkOutline">
+                          <p className="text-gray-600 dark:text-brand-text">{item.message}</p>
                           {!item.readAt && (
                             <button className="mt-2 text-xs text-brand-primary" onClick={() => handleRead(item.id)}>
                               Marcar como lida
@@ -110,7 +112,7 @@ function Header() {
               <div className="flex items-center gap-2">
                 {user.avatarUrl ? (
                   <img
-                    className="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-brand-darkSecondary"
+                    className="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-brand-darkOutline"
                     src={user.avatarUrl}
                     alt={user.name}
                   />
