@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_URL, apiRequest, getAccessToken } from "../api/client";
 import { usePlayer } from "../context/PlayerContext";
+import { useAuth } from "../context/AuthContext";
 import Skeleton from "../components/Skeleton";
 import { KanbanSquare, List, Plus } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -30,6 +31,7 @@ function Projects() {
   const [editProject, setEditProject] = useState(null);
   const [historyProject, setHistoryProject] = useState(null);
   const player = usePlayer();
+  const { user } = useAuth();
   const [invites, setInvites] = useState([]);
   const [inviteLoading, setInviteLoading] = useState(false);
 
@@ -100,12 +102,11 @@ function Projects() {
 
   async function handleDragEnd(result) {
     if (!result.destination) return;
-    const { source, destination, draggableId } = result;
+    const { source, destination } = result;
     if (source.droppableId === destination.droppableId && source.index === destination.index) {
       return;
     }
 
-    const token = getAccessToken();
     const updated = { ...grouped };
     const sourceList = Array.from(updated[source.droppableId] || []);
     const [moved] = sourceList.splice(source.index, 1);
@@ -115,25 +116,27 @@ function Projects() {
     updated[destination.droppableId] = destList;
 
     const updates = [];
-    updated[destination.droppableId].forEach((project, index) => {
-      updates.push(
-        apiRequest(`/projects/${project.id}/order`, {
-          method: "PUT",
-          body: { order: index + 1, status: destination.droppableId },
-          token,
-        })
-      );
-    });
-    if (source.droppableId !== destination.droppableId) {
-      updated[source.droppableId].forEach((project, index) => {
+    updated[destination.droppableId]
+      .filter((project) => project.ownerId === user?.id)
+      .forEach((project, index) => {
         updates.push(
           apiRequest(`/projects/${project.id}/order`, {
             method: "PUT",
-            body: { order: index + 1, status: source.droppableId },
-            token,
+            body: { order: index + 1, status: destination.droppableId },
           })
         );
       });
+    if (source.droppableId !== destination.droppableId) {
+      updated[source.droppableId]
+        .filter((project) => project.ownerId === user?.id)
+        .forEach((project, index) => {
+          updates.push(
+            apiRequest(`/projects/${project.id}/order`, {
+              method: "PUT",
+              body: { order: index + 1, status: source.droppableId },
+            })
+          );
+        });
     }
     await Promise.all(updates);
     loadProjects();
@@ -326,7 +329,7 @@ function Projects() {
                     <h3 className="text-sm font-semibold text-brand-primary">{label}</h3>
                     <div className="flex flex-col gap-3">
                       {(grouped[status] || []).map((project, index) => (
-                        <Draggable key={project.id} draggableId={project.id} index={index}>
+                        <Draggable key={project.id} draggableId={project.id} index={index} isDragDisabled={project.ownerId !== user?.id}>
                           {(dragProvided) => (
                             <div
                               ref={dragProvided.innerRef}
