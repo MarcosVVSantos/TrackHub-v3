@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -9,22 +9,27 @@ import Account from "./pages/Account";
 import Profile from "./pages/Profile";
 import Explore from "./pages/Explore";
 import Calendar from "./pages/Calendar";
+import Landing from "./pages/Landing";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Header from "./components/Header";
 import GlobalPlayer from "./components/GlobalPlayer";
 import { usePlayer } from "./context/PlayerContext";
+import { useAuth } from "./context/AuthContext";
 
 function App() {
   const player = usePlayer();
+  const { user, loading } = useAuth();
+  const location = useLocation();
   const hasPlayer = Boolean(player?.current);
+  const isLanding = location.pathname === "/";
 
   return (
     <div className={`min-h-screen bg-gray-50 text-gray-900 dark:bg-brand-dark dark:text-brand-text ${
       hasPlayer ? "pb-28" : ""
     }`}>
-      <Header />
+      {!isLanding && <Header />}
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={!loading && user ? <Navigate to="/dashboard" replace /> : <Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route
