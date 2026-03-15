@@ -91,8 +91,11 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!audio) return;
     audio.pause();
-    audio.currentTime = 0;
+    audio.src = "";
     setIsPlaying(false);
+    setCurrent(null);
+    setProgress(0);
+    setDuration(0);
   }
 
   const value = useMemo(

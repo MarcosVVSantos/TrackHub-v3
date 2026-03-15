@@ -288,13 +288,13 @@ function CalendarDropdownContent({ calendarLoading, calendarOverview, onClose })
         <Link className="text-xs text-brand-primary" to="/calendar" onClick={onClose}>Ver tudo</Link>
       </div>
       <div className="mt-3 space-y-3 text-sm">
-        {calendarLoading && <p className="text-xs text-gray-400">Carregando...</p>}
+        {calendarLoading && <p className="text-xs text-gray-400 dark:text-brand-textMuted">Carregando...</p>}
         {!calendarLoading && calendarOverview.today.length === 0 && calendarOverview.upcoming.length === 0 && (
-          <p className="text-xs text-gray-400">Nenhum evento agendado.</p>
+          <p className="text-xs text-gray-400 dark:text-brand-textMuted">Nenhum evento agendado.</p>
         )}
         {calendarOverview.today.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-gray-500">Hoje</p>
+            <p className="text-xs font-semibold text-gray-500 dark:text-brand-textMuted">Hoje</p>
             <div className="mt-2 space-y-2">
               {calendarOverview.today.map((item) => (
                 <Link key={item.id} to={`/projects/${item.projectId}`} className="block rounded-lg border border-gray-100 p-2 text-xs text-gray-600 dark:border-brand-darkOutline dark:text-brand-textMuted" onClick={onClose}>
@@ -306,7 +306,7 @@ function CalendarDropdownContent({ calendarLoading, calendarOverview, onClose })
         )}
         {calendarOverview.upcoming.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-gray-500">Próximos</p>
+            <p className="text-xs font-semibold text-gray-500 dark:text-brand-textMuted">Próximos</p>
             <div className="mt-2 space-y-2">
               {calendarOverview.upcoming.map((item) => (
                 <Link key={item.id} to={`/projects/${item.projectId}`} className="block rounded-lg border border-gray-100 p-2 text-xs text-gray-600 dark:border-brand-darkOutline dark:text-brand-textMuted" onClick={onClose}>

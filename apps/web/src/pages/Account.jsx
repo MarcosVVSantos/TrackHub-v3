@@ -20,7 +20,7 @@ function Account() {
     <div className="mx-auto max-w-5xl space-y-6 p-6">
       <div>
         <h2 className="text-2xl font-semibold text-brand-primary">Conta</h2>
-        <p className="mt-1 text-sm text-gray-500">Gerencie seu perfil, avatar e preferências.</p>
+        <p className="mt-1 text-sm text-gray-500 dark:text-brand-textMuted">Gerencie seu perfil, avatar e preferências.</p>
       </div>
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
         <div className="space-y-6">

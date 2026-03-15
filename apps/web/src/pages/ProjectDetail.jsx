@@ -253,15 +253,15 @@ function ProjectDetail() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-brand-primary">{project.name}</h2>
-            <p className="text-sm text-gray-500">{project.description}</p>
-            <div className="flex flex-wrap gap-2 text-xs text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-brand-textMuted">{project.description}</p>
+            <div className="flex flex-wrap gap-2 text-xs text-gray-400 dark:text-brand-textMuted">
               {project.tags?.map((tag) => (
                 <span key={tag} className="rounded-full bg-brand-accent/20 px-2 py-1">
                   #{tag}
                 </span>
               ))}
             </div>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-brand-textMuted">
               <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-2 py-1 dark:border-brand-darkOutline">
                 {project.isPublic ? <Globe size={12} /> : <Lock size={12} />}
                 {project.isPublic ? "Público" : "Privado"}
@@ -284,7 +284,7 @@ function ProjectDetail() {
               {project.coverUrl ? (
                 <img src={project.coverUrl} alt={project.name} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400 dark:text-brand-textMuted">
                   Sem capa
                 </div>
               )}
@@ -332,7 +332,7 @@ function ProjectDetail() {
             {project.comments?.map((item) => (
               <div key={item.id} className="rounded-lg bg-gray-50 p-3 dark:bg-brand-darkSecondary">
                 <p className="font-semibold text-brand-primary">{item.user?.name}</p>
-                <p className="text-gray-500">{item.content}</p>
+                <p className="text-gray-500 dark:text-brand-textMuted">{item.content}</p>
               </div>
             ))}
           </div>
@@ -373,8 +373,8 @@ function ProjectDetail() {
             {project.files?.map((item) => (
               <div key={item.id} className="rounded-lg bg-gray-50 p-3 dark:bg-brand-darkSecondary">
                 <p className="font-semibold text-brand-primary">{item.name}</p>
-                <p className="text-gray-500">{item.type}</p>
-                <p className="text-xs text-gray-400">Versões: {item.versions?.length || 0}</p>
+                <p className="text-gray-500 dark:text-brand-textMuted">{item.type}</p>
+                <p className="text-xs text-gray-400 dark:text-brand-textMuted">Versões: {item.versions?.length || 0}</p>
               </div>
             ))}
           </div>
@@ -482,7 +482,7 @@ function ProjectDetail() {
               onChange={(event) => setEventForm({ ...eventForm, description: event.target.value })}
             />
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500">Participantes</p>
+              <p className="text-xs font-semibold text-gray-500 dark:text-brand-textMuted">Participantes</p>
               <div className="flex flex-wrap gap-2">
                 {project.members?.filter((member) => member.status === "accepted").map((member) => (
                   <button
@@ -491,7 +491,7 @@ function ProjectDetail() {
                     className={`rounded-full border px-3 py-1 text-xs transition ${
                       eventForm.participantIds.includes(member.userId)
                         ? "border-brand-primary bg-brand-accent/20 text-brand-primary"
-                        : "border-gray-200 text-gray-500"
+                        : "border-gray-200 text-gray-500 dark:border-brand-darkOutline dark:text-brand-textMuted"
                     }`}
                     onClick={() => toggleParticipant(member.userId)}
                   >
@@ -513,7 +513,7 @@ function ProjectDetail() {
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-brand-primary">{item.title}</p>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-400 dark:text-brand-textMuted">
                         {new Date(item.startsAt).toLocaleString("pt-BR")}
                       </span>
                       <button
@@ -525,8 +525,8 @@ function ProjectDetail() {
                       </button>
                     </div>
                   </div>
-                  {item.description && <p className="text-xs text-gray-500">{item.description}</p>}
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400">
+                  {item.description && <p className="text-xs text-gray-500 dark:text-brand-textMuted">{item.description}</p>}
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400 dark:text-brand-textMuted">
                     {item.participants?.map((participant) => (
                       <span key={participant.id}>@{participant.user?.username || participant.userId}</span>
                     ))}
@@ -534,7 +534,7 @@ function ProjectDetail() {
                 </div>
               ))
             ) : (
-              <p className="text-xs text-gray-400">Nenhum evento agendado.</p>
+              <p className="text-xs text-gray-400 dark:text-brand-textMuted">Nenhum evento agendado.</p>
             )}
           </div>
         </div>
@@ -579,7 +579,7 @@ function ProjectDetail() {
                   <span className="text-xs text-red-500">{task.flag}</span>
                 )}
               </div>
-              {task.description && <p className="text-gray-500">{task.description}</p>}
+              {task.description && <p className="text-gray-500 dark:text-brand-textMuted">{task.description}</p>}
             </div>
           ))}
         </div>

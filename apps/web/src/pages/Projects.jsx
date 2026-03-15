@@ -193,7 +193,7 @@ function Projects() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold text-brand-primary">Projetos</h2>
-          <p className="text-sm text-gray-500">Crie, organize e colabore com fluidez.</p>
+          <p className="text-sm text-gray-500 dark:text-brand-textMuted">Crie, organize e colabore com fluidez.</p>
         </div>
         <button className="btn-primary" type="button" onClick={() => setOpenModal(true)}>
           <Plus size={16} />
@@ -205,7 +205,7 @@ function Projects() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-brand-primary">Filtros</p>
-            <p className="text-xs text-gray-500">Selecione tags e status.</p>
+            <p className="text-xs text-gray-500 dark:text-brand-textMuted">Selecione tags e status.</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -235,7 +235,7 @@ function Projects() {
                 className={`rounded-full border px-3 py-1 text-xs transition ${
                   selectedStatus.includes(value)
                     ? "border-brand-primary bg-brand-accent/20 text-brand-primary"
-                    : "border-gray-200 text-gray-500 hover:border-brand-primary"
+                    : "border-gray-200 text-gray-500 hover:border-brand-primary dark:border-brand-darkOutline dark:text-brand-textMuted"
                 }`}
               >
                 {label}
@@ -248,12 +248,12 @@ function Projects() {
       <div className="card space-y-3">
         <div>
           <p className="text-sm font-semibold text-brand-primary">Convites pendentes</p>
-          <p className="text-xs text-gray-500">Aceite ou recuse parcerias de projeto.</p>
+          <p className="text-xs text-gray-500 dark:text-brand-textMuted">Aceite ou recuse parcerias de projeto.</p>
         </div>
         {inviteLoading ? (
-          <p className="text-xs text-gray-400">Carregando convites...</p>
+          <p className="text-xs text-gray-400 dark:text-brand-textMuted">Carregando convites...</p>
         ) : invites.length === 0 ? (
-          <p className="text-xs text-gray-400">Nenhum convite pendente.</p>
+          <p className="text-xs text-gray-400 dark:text-brand-textMuted">Nenhum convite pendente.</p>
         ) : (
           <div className="space-y-2">
             {invites.map((invite) => (

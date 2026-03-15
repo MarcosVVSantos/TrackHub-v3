@@ -381,7 +381,7 @@ function Profile() {
                       {track.coverUrl ? (
                         <img src={track.coverUrl} alt={track.title} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-400">
+                        <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-brand-textMuted">
                           <Music size={18} />
                         </div>
                       )}
@@ -429,7 +429,7 @@ function Profile() {
                       {project.coverUrl ? (
                         <img src={project.coverUrl} alt={project.name} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-400">
+                        <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-brand-textMuted">
                           <Layers size={18} />
                         </div>
                       )}

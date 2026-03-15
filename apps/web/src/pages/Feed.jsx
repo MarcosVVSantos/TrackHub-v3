@@ -642,7 +642,7 @@ function Feed() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-gray-400">
+                          <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-brand-textMuted">
                             <Layers size={20} />
                           </div>
                         )}
@@ -705,7 +705,7 @@ function Feed() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-gray-400">
+                          <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-brand-textMuted">
                             <Music size={20} />
                           </div>
                         )}
@@ -873,7 +873,7 @@ function Feed() {
                                 {isAuthor && !isEditing && (
                                   <div className="relative">
                                     <button
-                                      className="rounded-full p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 group-hover:opacity-100"
+                                      className="rounded-full p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 group-hover:opacity-100 dark:text-brand-textMuted dark:hover:bg-brand-darkOutline"
                                       onClick={() =>
                                         setCommentMenuId((prev) => (prev === comment.id ? null : comment.id))
                                       }
@@ -906,7 +906,7 @@ function Feed() {
                               )}
                               {confirmDeleteId === comment.id && (
                                 <div className="mt-2 flex items-center gap-2 text-xs">
-                                  <span className="text-gray-500">Excluir comentário?</span>
+                                  <span className="text-gray-500 dark:text-brand-textMuted">Excluir comentário?</span>
                                   <button
                                     className="btn-secondary"
                                     type="button"
@@ -1194,7 +1194,7 @@ function CreatePostModal({ onClose, onSubmit }) {
       <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl dark:bg-brand-darkSecondary">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-brand-text">Criar post</h3>
-          <button className="text-sm text-gray-400" onClick={onClose}>
+          <button className="text-sm text-gray-400 dark:text-brand-textMuted" onClick={onClose}>
             Fechar
           </button>
         </div>
