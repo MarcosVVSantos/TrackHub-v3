@@ -6,16 +6,19 @@ import "./styles.css";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { PlayerProvider } from "./context/PlayerContext";
+import { NotificationProvider } from "./context/NotificationContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
   <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
-        <ThemeProvider>
-          <PlayerProvider>
-            <App />
-          </PlayerProvider>
-        </ThemeProvider>
+        <NotificationProvider>
+          <ThemeProvider>
+            <PlayerProvider>
+              <App />
+            </PlayerProvider>
+          </ThemeProvider>
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

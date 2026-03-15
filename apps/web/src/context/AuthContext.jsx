@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiRequest, clearTokens, getAccessToken, setAccessToken, setRefreshToken } from "../api/client";
+import { apiRequest, clearTokens, getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -9,14 +9,15 @@ export function AuthProvider({ children }) {
 
   async function loadUser() {
     const token = getAccessToken();
-    if (!token) {
+    const refresh = getRefreshToken();
+    if (!token && !refresh) {
       setLoading(false);
       return;
     }
     try {
-      const data = await apiRequest("/users/me", { token });
+      const data = await apiRequest("/users/me");
       setUser(data);
-    } catch (error) {
+    } catch {
       clearTokens();
     } finally {
       setLoading(false);

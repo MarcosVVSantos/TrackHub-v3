@@ -14,15 +14,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { apiRequest, getAccessToken } from "../api/client";
+import { useNotifications } from "../context/NotificationContext";
+import { apiRequest } from "../api/client";
 
 function Header() {
   const { user, logout } = useAuth();
   const { toggleTheme } = useTheme() || {};
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { notifications, unreadCount, loading, error, loadNotifications, handleReadAll } = useNotifications();
   const [open, setOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarOverview, setCalendarOverview] = useState({ today: [], upcoming: [] });
@@ -33,32 +31,13 @@ function Header() {
     ? user.name.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase()
     : "";
 
-  async function loadNotifications() {
-    if (!user) return;
-    const token = getAccessToken();
-    if (!token) return;
-    try {
-      setLoading(true);
-      setError("");
-      const data = await apiRequest("/notifications", { token });
-      setNotifications(data.items || []);
-      setUnreadCount(data.unreadCount || 0);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function loadCalendarOverview() {
     if (!user) return;
-    const token = getAccessToken();
-    if (!token) return;
     try {
       setCalendarLoading(true);
-      const data = await apiRequest("/calendar/overview", { token });
+      const data = await apiRequest("/calendar/overview");
       setCalendarOverview(data);
-    } catch (err) {
+    } catch {
       setCalendarOverview({ today: [], upcoming: [] });
     } finally {
       setCalendarLoading(false);
@@ -66,22 +45,8 @@ function Header() {
   }
 
   useEffect(() => {
-    loadNotifications();
-    const interval = setInterval(loadNotifications, 45000);
-    return () => clearInterval(interval);
-  }, [user]);
-
-  useEffect(() => {
     if (calendarOpen) loadCalendarOverview();
   }, [calendarOpen]);
-
-  async function handleReadAll() {
-    const token = getAccessToken();
-    if (!token) return;
-    await apiRequest("/notifications/read-all", { method: "PUT", token });
-    setNotifications((prev) => prev.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() })));
-    setUnreadCount(0);
-  }
 
   function formatRelative(dateString) {
     if (!dateString) return "";

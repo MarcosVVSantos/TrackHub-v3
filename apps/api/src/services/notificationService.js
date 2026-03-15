@@ -1,10 +1,11 @@
 const prisma = require("../lib/prisma");
+const socketService = require("./socketService");
 
 async function createNotification({ userId, type, message, link, actorId }) {
   if (actorId && actorId === userId) {
     return null;
   }
-  return prisma.notification.create({
+  const notification = await prisma.notification.create({
     data: {
       userId,
       type,
@@ -12,7 +13,12 @@ async function createNotification({ userId, type, message, link, actorId }) {
       link,
       actorId: actorId || null,
     },
+    include: {
+      actor: { select: { id: true, name: true, username: true, avatarUrl: true } },
+    },
   });
+  socketService.sendToUser(userId, { type: "notification", data: notification });
+  return notification;
 }
 
 async function listNotifications(userId) {
