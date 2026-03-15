@@ -83,32 +83,7 @@ async function statusHistory(req, res, next) {
 async function streamAudio(req, res, next) {
   try {
     const file = await projectService.getProjectAudio(req.user.sub, req.params.id);
-    const filePath = path.join(config.rootDir, config.uploadDir, file.storageKey);
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
-    const range = req.headers.range;
-
-    if (range) {
-      const [startStr, endStr] = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(startStr, 10);
-      const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
-      const chunkSize = end - start + 1;
-      const stream = fs.createReadStream(filePath, { start, end });
-      res.writeHead(206, {
-        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-        "Accept-Ranges": "bytes",
-        "Content-Length": chunkSize,
-        "Content-Type": file.type,
-      });
-      stream.pipe(res);
-      return;
-    }
-
-    res.writeHead(200, {
-      "Content-Length": fileSize,
-      "Content-Type": file.type,
-    });
-    fs.createReadStream(filePath).pipe(res);
+    return res.redirect(file.url);
   } catch (error) {
     next(error);
   }

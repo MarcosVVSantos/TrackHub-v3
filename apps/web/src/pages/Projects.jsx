@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { API_URL, apiRequest, getAccessToken } from "../api/client";
+import { apiRequest, getAccessToken } from "../api/client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "../context/AuthContext";
 import Skeleton from "../components/Skeleton";
@@ -156,15 +156,9 @@ function Projects() {
 
   async function handlePlay(project) {
     try {
-      const token = getAccessToken();
-      const response = await fetch(`${API_URL}/projects/${project.id}/audio`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        throw new Error("Não foi possível reproduzir o áudio");
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      const audioUrl = project.files?.[0]?.url;
+      if (!audioUrl) throw new Error("Não foi possível reproduzir o áudio");
+
       if (player?.current?.id === project.id) {
         player.togglePlay();
         return;
@@ -172,8 +166,7 @@ function Projects() {
       player?.playTrack({
         id: project.id,
         title: project.name,
-        audioUrl: url,
-        isObjectUrl: true,
+        audioUrl,
         coverUrl: project.coverUrl,
         projectId: project.id,
         projectName: project.name,
