@@ -90,7 +90,7 @@ function GlobalPlayer() {
                 step={0.01}
                 value={volume}
                 onChange={(event) => setVolume(Number(event.target.value))}
-                className="accent-brand-primary"
+                className="w-24 accent-brand-primary"
               />
             </div>
             <button className="btn-secondary" type="button" onClick={() => setDrawerOpen(true)}>

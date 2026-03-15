@@ -63,6 +63,7 @@ export function PlayerProvider({ children }) {
       audio.src = track.audioUrl;
     }
 
+    audio.volume = volume;
     setCurrent(track);
     await audio.play();
     setIsPlaying(true);
