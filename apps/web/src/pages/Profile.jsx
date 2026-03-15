@@ -13,7 +13,7 @@ import {
   Layers,
   Camera,
 } from "lucide-react";
-import { API_URL, apiRequest, getAccessToken } from "../api/client";
+import { API_URL, apiRequest } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { usePlayer } from "../context/PlayerContext";
 import Skeleton from "../components/Skeleton";
@@ -45,7 +45,6 @@ function Profile() {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const fileRef = useRef(null);
   const player = usePlayer();
-  const token = getAccessToken();
   const currentTrack = player?.current;
   const isPlaying = player?.isPlaying;
   const progress = player?.progress || 0;
@@ -58,7 +57,7 @@ function Profile() {
       try {
         setLoading(true);
         setError("");
-  const data = await apiRequest(`/profiles/${identifier}`, { token });
+        const data = await apiRequest(`/profiles/${identifier}`);
         setProfile(data);
         setBioValue(data.bio || "");
         setNameValue(data.name || "");
@@ -69,25 +68,25 @@ function Profile() {
       }
     }
 
-    if (token) loadProfile();
-  }, [identifier, token]);
+    if (user) loadProfile();
+  }, [identifier, user]);
 
   useEffect(() => {
     async function loadTab() {
-      if (!token) return;
+      if (!user) return;
       try {
         setTabLoading(true);
         if (tab === "posts") {
-          const data = await apiRequest(`/profiles/${identifier}/posts`, { token });
+          const data = await apiRequest(`/profiles/${identifier}/posts`);
           setPosts(data);
         } else if (tab === "projects") {
-          const data = await apiRequest(`/profiles/${identifier}/projects`, { token });
+          const data = await apiRequest(`/profiles/${identifier}/projects`);
           setPublicProjects(data);
         } else if (tab === "playlists") {
-          const data = await apiRequest(`/profiles/${identifier}/playlists`, { token });
+          const data = await apiRequest(`/profiles/${identifier}/playlists`);
           setPlaylists(data);
         } else {
-          const data = await apiRequest(`/profiles/${identifier}/productions`, { token });
+          const data = await apiRequest(`/profiles/${identifier}/productions`);
           setProductions(data);
         }
       } catch (err) {
@@ -98,11 +97,11 @@ function Profile() {
     }
 
     loadTab();
-  }, [tab, identifier, token]);
+  }, [tab, identifier, user]);
 
   async function handlePlay(track) {
     if (!track) return;
-    await apiRequest(`/tracks/${track.id}/play`, { method: "POST", token });
+    await apiRequest(`/tracks/${track.id}/play`, { method: "POST" });
     if (player?.current?.id === track.id) {
       player.togglePlay();
       return;
@@ -166,10 +165,10 @@ function Profile() {
   async function handleSavePlaylist(playlist) {
     if (!playlist) return;
     if (playlist.saved) {
-      await apiRequest(`/feed/playlists/${playlist.id}/save`, { method: "DELETE", token });
+      await apiRequest(`/feed/playlists/${playlist.id}/save`, { method: "DELETE" });
       setPlaylists((prev) => prev.map((item) => (item.id === playlist.id ? { ...item, saved: false } : item)));
     } else {
-      await apiRequest(`/feed/playlists/${playlist.id}/save`, { method: "POST", token });
+      await apiRequest(`/feed/playlists/${playlist.id}/save`, { method: "POST" });
       setPlaylists((prev) => prev.map((item) => (item.id === playlist.id ? { ...item, saved: true } : item)));
     }
   }
@@ -177,22 +176,22 @@ function Profile() {
   async function handleFollow() {
     if (!profile) return;
     if (profile.isFollowing) {
-      await apiRequest(`/follows/${profile.id}`, { method: "DELETE", token });
+      await apiRequest(`/follows/${profile.id}`, { method: "DELETE" });
       setProfile({ ...profile, isFollowing: false, followers: profile.followers - 1 });
     } else {
-      await apiRequest(`/follows/${profile.id}`, { method: "POST", token });
+      await apiRequest(`/follows/${profile.id}`, { method: "POST" });
       setProfile({ ...profile, isFollowing: true, followers: profile.followers + 1 });
     }
   }
 
   async function handleSaveBio() {
-    const updated = await apiRequest("/users/me", { method: "PUT", body: { bio: bioValue }, token });
+    const updated = await apiRequest("/users/me", { method: "PUT", body: { bio: bioValue } });
     setProfile({ ...profile, bio: updated.bio });
     setEditingBio(false);
   }
 
   async function handleSaveName() {
-    const updated = await apiRequest("/users/me", { method: "PUT", body: { name: nameValue }, token });
+    const updated = await apiRequest("/users/me", { method: "PUT", body: { name: nameValue } });
     setProfile({ ...profile, name: updated.name });
     setEditingName(false);
   }
@@ -229,7 +228,7 @@ function Profile() {
     setAvatarLoading(false);
   }
 
-  if (!token) {
+  if (!user) {
     return (
       <div className="mx-auto max-w-6xl p-6">
         <div className="card">Faça login para visualizar perfis públicos.</div>

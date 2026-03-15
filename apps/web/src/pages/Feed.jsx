@@ -14,7 +14,7 @@ import {
   UserPlus,
   Check,
 } from "lucide-react";
-import { API_URL, apiRequest, getAccessToken } from "../api/client";
+import { API_URL, apiRequest } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { usePlayer } from "../context/PlayerContext";
 import Skeleton from "../components/Skeleton";
@@ -89,14 +89,13 @@ function Feed() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [removingCommentId, setRemovingCommentId] = useState(null);
   const playlistAudioRef = useRef(null);
-  const token = getAccessToken();
   const currentTrack = player?.current;
   const isPlaying = player?.isPlaying;
   const progress = player?.progress || 0;
   const duration = player?.duration || 0;
 
   async function loadTab(tabId) {
-    if (!token) {
+    if (!user) {
       setLoading(false);
       return;
     }
@@ -104,15 +103,15 @@ function Feed() {
       setLoading(true);
       setError("");
       if (tabId === "social") {
-        const data = await apiRequest("/feed/social", { token });
+        const data = await apiRequest("/feed/social");
         setSocialPosts(data);
       } else if (tabId === "playlists") {
-        const data = await apiRequest("/feed/playlists", { token });
+        const data = await apiRequest("/feed/playlists");
         setPlaylists(data);
       } else {
         const [trackData, projectData] = await Promise.all([
-          apiRequest("/feed/productions", { token }),
-          apiRequest("/feed/projects", { token }),
+          apiRequest("/feed/productions"),
+          apiRequest("/feed/projects"),
         ]);
         setProductions(trackData);
         setProjectPosts(projectData);
@@ -136,12 +135,12 @@ function Feed() {
   }
 
   async function handlePlayTrack(track) {
-    if (!token) return;
+    if (!user) return;
     if (playlistAudioRef.current) {
       playlistAudioRef.current.pause();
       setPlaylistPlaying(null);
     }
-    await apiRequest(`/tracks/${track.id}/play`, { method: "POST", token });
+    await apiRequest(`/tracks/${track.id}/play`, { method: "POST" });
     if (player?.current?.id === track.id) {
       player.togglePlay();
       return;
@@ -161,13 +160,13 @@ function Feed() {
   }
 
   async function handlePlayProject(project) {
-    if (!token) return;
+    if (!user) return;
     if (playlistAudioRef.current) {
       playlistAudioRef.current.pause();
       setPlaylistPlaying(null);
     }
     const response = await fetch(`${API_URL}/projects/${project.id}/audio`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${localStorage.getItem("trackhub_access")}` },
     });
     if (!response.ok) {
       setError("Não foi possível reproduzir o áudio do projeto");
@@ -199,7 +198,7 @@ function Feed() {
   }
 
   async function handleLikeTrack(trackId) {
-    if (!token) return;
+    if (!user) return;
     setProductions((prev) =>
       prev.map((track) =>
         track.id === trackId
@@ -214,27 +213,27 @@ function Feed() {
           : track
       )
     );
-    await apiRequest(`/tracks/${trackId}/like`, { method: "POST", token });
+    await apiRequest(`/tracks/${trackId}/like`, { method: "POST" });
   }
 
   async function handleSaveTrack(track) {
-    if (!token) return;
+    if (!user) return;
     if (track.saved) {
-      await apiRequest(`/tracks/${track.id}/save`, { method: "DELETE", token });
+      await apiRequest(`/tracks/${track.id}/save`, { method: "DELETE" });
     } else {
-      await apiRequest(`/tracks/${track.id}/save`, { method: "POST", token });
+      await apiRequest(`/tracks/${track.id}/save`, { method: "POST" });
     }
     loadTab("productions");
   }
 
   async function handleCommentTrack(trackId, content) {
-    if (!token) return;
-    await apiRequest(`/tracks/${trackId}/comment`, { method: "POST", body: { content }, token });
+    if (!user) return;
+    await apiRequest(`/tracks/${trackId}/comment`, { method: "POST", body: { content } });
     loadTab("productions");
   }
 
   async function handleLikeProjectPost(postId) {
-    if (!token) return;
+    if (!user) return;
     setProjectPosts((prev) =>
       prev.map((post) =>
         post.id === postId
@@ -249,40 +248,40 @@ function Feed() {
           : post
       )
     );
-    await apiRequest(`/feed/social/${postId}/like`, { method: "POST", token });
+    await apiRequest(`/feed/social/${postId}/like`, { method: "POST" });
   }
 
   async function handleSaveProjectPost(postId, saved) {
-    if (!token) return;
+    if (!user) return;
     if (saved) {
-      await apiRequest(`/feed/social/${postId}/save`, { method: "DELETE", token });
+      await apiRequest(`/feed/social/${postId}/save`, { method: "DELETE" });
     } else {
-      await apiRequest(`/feed/social/${postId}/save`, { method: "POST", token });
+      await apiRequest(`/feed/social/${postId}/save`, { method: "POST" });
     }
     loadTab("productions");
   }
 
   async function handleCommentProjectPost(postId, content) {
-    if (!token) return;
-    await apiRequest(`/feed/social/${postId}/comment`, { method: "POST", body: { content }, token });
+    if (!user) return;
+    await apiRequest(`/feed/social/${postId}/comment`, { method: "POST", body: { content } });
     loadTab("productions");
   }
 
   async function handleUpdateTrackTitle(trackId, title) {
-    if (!token) return;
-    await apiRequest(`/tracks/${trackId}`, { method: "PATCH", body: { title }, token });
+    if (!user) return;
+    await apiRequest(`/tracks/${trackId}`, { method: "PATCH", body: { title } });
     loadTab("productions");
   }
 
   async function handleCreatePost(payload) {
-    if (!token) return;
-    await apiRequest("/feed/social", { method: "POST", body: payload, token });
+    if (!user) return;
+    await apiRequest("/feed/social", { method: "POST", body: payload });
     setShowPostModal(false);
     loadTab("social");
   }
 
   async function handleLikePost(postId) {
-    if (!token) return;
+    if (!user) return;
     setSocialPosts((prev) =>
       prev.map((post) =>
         post.id === postId
@@ -297,21 +296,21 @@ function Feed() {
           : post
       )
     );
-    await apiRequest(`/feed/social/${postId}/like`, { method: "POST", token });
+    await apiRequest(`/feed/social/${postId}/like`, { method: "POST" });
   }
 
   async function handleSavePost(post) {
-    if (!token) return;
+    if (!user) return;
     if (post.saved) {
-      await apiRequest(`/feed/social/${post.id}/save`, { method: "DELETE", token });
+      await apiRequest(`/feed/social/${post.id}/save`, { method: "DELETE" });
     } else {
-      await apiRequest(`/feed/social/${post.id}/save`, { method: "POST", token });
+      await apiRequest(`/feed/social/${post.id}/save`, { method: "POST" });
     }
     loadTab("social");
   }
 
   async function handleCommentPost(postId, content) {
-    if (!token) return;
+    if (!user) return;
     const tempId = `temp-${Date.now()}`;
     const optimistic = {
       id: tempId,
@@ -345,7 +344,6 @@ function Feed() {
       const created = await apiRequest(`/feed/social/${postId}/comment`, {
         method: "POST",
         body: { content },
-        token,
       });
       setCommentsByPost((prev) => {
         const current = prev[postId] || { items: [] };
@@ -391,13 +389,12 @@ function Feed() {
   }
 
   async function handleUpdateComment(postId, commentId) {
-    if (!token) return;
+    if (!user) return;
     const trimmed = commentDraft.trim();
     if (!trimmed) return;
     await apiRequest(`/comments/${commentId}`, {
       method: "PATCH",
       body: { content: trimmed },
-      token,
     });
     setCommentsByPost((prev) => {
       const current = prev[postId] || { items: [] };
@@ -415,9 +412,9 @@ function Feed() {
   }
 
   async function handleDeleteComment(postId, commentId) {
-    if (!token) return;
+    if (!user) return;
     setRemovingCommentId(commentId);
-    await apiRequest(`/comments/${commentId}`, { method: "DELETE", token });
+    await apiRequest(`/comments/${commentId}`, { method: "DELETE" });
     setTimeout(() => {
       setCommentsByPost((prev) => {
         const current = prev[postId] || { items: [] };
@@ -466,7 +463,7 @@ function Feed() {
       [postId]: { ...prev[postId], loading: true, error: "" },
     }));
     try {
-      const data = await apiRequest(`/feed/social/${postId}/comments`, { token });
+      const data = await apiRequest(`/feed/social/${postId}/comments`);
       setCommentsByPost((prev) => ({
         ...prev,
         [postId]: { ...prev[postId], loading: false, items: data.items || [] },
@@ -480,7 +477,7 @@ function Feed() {
   }
 
   async function handlePlayPlaylist(playlist) {
-    if (!token) return;
+    if (!user) return;
     const audio = playlistAudioRef.current;
     if (!audio || playlist.tracks.length === 0) return;
     player?.stop();
@@ -504,21 +501,21 @@ function Feed() {
   }
 
   async function handleSavePlaylist(playlist) {
-    if (!token) return;
+    if (!user) return;
     if (playlist.saved) {
-      await apiRequest(`/feed/playlists/${playlist.id}/save`, { method: "DELETE", token });
+      await apiRequest(`/feed/playlists/${playlist.id}/save`, { method: "DELETE" });
     } else {
-      await apiRequest(`/feed/playlists/${playlist.id}/save`, { method: "POST", token });
+      await apiRequest(`/feed/playlists/${playlist.id}/save`, { method: "POST" });
     }
     loadTab("playlists");
   }
 
   async function handleToggleFollow(ownerId, isFollowing) {
-    if (!token || !ownerId) return;
+    if (!user || !ownerId) return;
     if (isFollowing) {
-      await apiRequest(`/follows/${ownerId}`, { method: "DELETE", token });
+      await apiRequest(`/follows/${ownerId}`, { method: "DELETE" });
     } else {
-      await apiRequest(`/follows/${ownerId}`, { method: "POST", token });
+      await apiRequest(`/follows/${ownerId}`, { method: "POST" });
     }
     setProductions((prev) =>
       prev.map((item) =>
@@ -527,7 +524,7 @@ function Feed() {
     );
   }
 
-  if (!token) {
+  if (!user) {
     return (
       <div className="mx-auto max-w-6xl space-y-4 p-6">
         <EmptyState
@@ -1152,6 +1149,7 @@ function PostReference({ post }) {
 }
 
 function CreatePostModal({ onClose, onSubmit }) {
+  const { user } = useAuth() || {};
   const [content, setContent] = useState("");
   const [projectId, setProjectId] = useState("");
   const [trackId, setTrackId] = useState("");
@@ -1159,38 +1157,37 @@ function CreatePostModal({ onClose, onSubmit }) {
   const [projects, setProjects] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [playlists, setPlaylists] = useState([]);
-  const token = getAccessToken();
 
   useEffect(() => {
     async function loadProjects() {
-      if (!token) return;
-      const data = await apiRequest("/projects", { token });
+      if (!user) return;
+      const data = await apiRequest("/projects");
       setProjects(data);
     }
     loadProjects();
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
     async function loadPlaylists() {
-      if (!token) return;
-      const data = await apiRequest("/feed/playlists", { token });
+      if (!user) return;
+      const data = await apiRequest("/feed/playlists");
       setPlaylists(data);
     }
     loadPlaylists();
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
     async function loadTracks() {
-      if (!token || !projectId) {
+      if (!user || !projectId) {
         setTracks([]);
         setTrackId("");
         return;
       }
-      const project = await apiRequest(`/projects/${projectId}`, { token });
+      const project = await apiRequest(`/projects/${projectId}`);
       setTracks(project.tracks || []);
     }
     loadTracks();
-  }, [projectId, token]);
+  }, [projectId, user]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">

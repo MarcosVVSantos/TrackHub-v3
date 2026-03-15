@@ -19,8 +19,8 @@ async function resolveUser(identifier) {
 async function getProfile(viewerId, identifier) {
   const user = await resolveUser(identifier);
 
-  if (!user || !user.isActive) {
-    const error = new Error(!user ? "Perfil não encontrado" : "Usuário desativado");
+  if (!user) {
+    const error = new Error("Perfil não encontrado");
     error.status = 404;
     throw error;
   }
@@ -52,8 +52,8 @@ async function getProfile(viewerId, identifier) {
 
 async function listProductions(identifier) {
   const user = await resolveUser(identifier);
-  if (!user || !user.isActive) {
-    const error = new Error(!user ? "Perfil não encontrado" : "Usuário desativado");
+  if (!user) {
+    const error = new Error("Perfil não encontrado");
     error.status = 404;
     throw error;
   }
@@ -77,8 +77,8 @@ async function listProductions(identifier) {
 
 async function listPublicProjects(identifier, viewerId) {
   const user = await resolveUser(identifier);
-  if (!user || !user.isActive) {
-    const error = new Error(!user ? "Perfil não encontrado" : "Usuário desativado");
+  if (!user) {
+    const error = new Error("Perfil não encontrado");
     error.status = 404;
     throw error;
   }
@@ -121,8 +121,8 @@ async function listPublicProjects(identifier, viewerId) {
 
 async function listPosts(identifier) {
   const user = await resolveUser(identifier);
-  if (!user || !user.isActive) {
-    const error = new Error(!user ? "Perfil não encontrado" : "Usuário desativado");
+  if (!user) {
+    const error = new Error("Perfil não encontrado");
     error.status = 404;
     throw error;
   }
@@ -141,8 +141,8 @@ async function listPosts(identifier) {
 
 async function listPlaylists(identifier, viewerId) {
   const user = await resolveUser(identifier);
-  if (!user || !user.isActive) {
-    const error = new Error(!user ? "Perfil não encontrado" : "Usuário desativado");
+  if (!user) {
+    const error = new Error("Perfil não encontrado");
     error.status = 404;
     throw error;
   }
