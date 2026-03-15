@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_URL, apiRequest, getAccessToken } from "../api/client";
+import { usePlayer } from "../context/PlayerContext";
 import Skeleton from "../components/Skeleton";
 import { KanbanSquare, List, Plus } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -28,8 +29,9 @@ function Projects() {
   const [partnerProject, setPartnerProject] = useState(null);
   const [editProject, setEditProject] = useState(null);
   const [historyProject, setHistoryProject] = useState(null);
-  const [activeAudio, setActiveAudio] = useState(null);
-  const [activeProjectId, setActiveProjectId] = useState(null);
+  const player = usePlayer();
+  const [invites, setInvites] = useState([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   async function loadProjects() {
     try {
@@ -54,6 +56,19 @@ function Projects() {
     }
   }
 
+  async function loadInvites() {
+    try {
+      setInviteLoading(true);
+      const token = getAccessToken();
+      const data = await apiRequest("/projects/invites", { token });
+      setInvites(data);
+    } catch (err) {
+      setInvites([]);
+    } finally {
+      setInviteLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadProjects();
   }, [selectedTags, selectedStatus]);
@@ -61,6 +76,17 @@ function Projects() {
   useEffect(() => {
     loadTags();
   }, []);
+
+  useEffect(() => {
+    loadInvites();
+  }, []);
+
+  async function handleInviteAction(inviteId, action) {
+    const token = getAccessToken();
+    await apiRequest(`/projects/invites/${inviteId}/${action}`, { method: "POST", token });
+    loadInvites();
+    loadProjects();
+  }
 
   const grouped = useMemo(() => {
     if (!projects) return {};
@@ -126,15 +152,6 @@ function Projects() {
   }
 
   async function handlePlay(project) {
-    if (activeProjectId === project.id) {
-      if (activeAudio) {
-        URL.revokeObjectURL(activeAudio);
-      }
-      setActiveAudio(null);
-      setActiveProjectId(null);
-      return;
-    }
-
     try {
       const token = getAccessToken();
       const response = await fetch(`${API_URL}/projects/${project.id}/audio`, {
@@ -145,11 +162,23 @@ function Projects() {
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      if (activeAudio) {
-        URL.revokeObjectURL(activeAudio);
+      if (player?.current?.id === project.id) {
+        player.togglePlay();
+        return;
       }
-      setActiveAudio(url);
-      setActiveProjectId(project.id);
+      player?.playTrack({
+        id: project.id,
+        title: project.name,
+        audioUrl: url,
+        isObjectUrl: true,
+        coverUrl: project.coverUrl,
+        projectId: project.id,
+        projectName: project.name,
+        creatorName: project.owner?.name,
+        description: project.description,
+        tags: project.tags || [],
+        partners: (project.members || []).map((member) => member.user).filter(Boolean),
+      });
     } catch (err) {
       setError(err.message);
     }
@@ -220,6 +249,50 @@ function Projects() {
         </div>
       </div>
 
+      <div className="card space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-brand-primary">Convites pendentes</p>
+          <p className="text-xs text-gray-500">Aceite ou recuse parcerias de projeto.</p>
+        </div>
+        {inviteLoading ? (
+          <p className="text-xs text-gray-400">Carregando convites...</p>
+        ) : invites.length === 0 ? (
+          <p className="text-xs text-gray-400">Nenhum convite pendente.</p>
+        ) : (
+          <div className="space-y-2">
+            {invites.map((invite) => (
+              <div
+                key={invite.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 p-3 dark:border-brand-darkOutline"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 dark:text-brand-text">
+                    {invite.project?.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-brand-textMuted">
+                    Convidado por {invite.invitedBy?.name || "parceiro"}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => handleInviteAction(invite.id, "decline")}
+                  >
+                    Recusar
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={() => handleInviteAction(invite.id, "accept")}
+                  >
+                    Aceitar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {!projects ? (
         <Skeleton lines={6} />
       ) : view === "list" ? (
@@ -233,7 +306,7 @@ function Projects() {
               onEdit={setEditProject}
               onHistory={setHistoryProject}
               onTagClick={handleTagClick}
-              isPlaying={activeProjectId === project.id}
+              isPlaying={player?.current?.id === project.id && player?.isPlaying}
               statusLabel={statusLabels[project.status]}
               hasAudio={project.files?.length || project.tracks?.length}
             />
@@ -268,7 +341,7 @@ function Projects() {
                                 onEdit={setEditProject}
                                 onHistory={setHistoryProject}
                                 onTagClick={handleTagClick}
-                                isPlaying={activeProjectId === project.id}
+                                isPlaying={player?.current?.id === project.id && player?.isPlaying}
                                 statusLabel={statusLabels[project.status]}
                                 hasAudio={project.files?.length || project.tracks?.length}
                               />
@@ -284,21 +357,6 @@ function Projects() {
             ))}
           </div>
         </DragDropContext>
-      )}
-      {activeAudio && (
-        <div className="card">
-          <audio
-            controls
-            autoPlay
-            src={activeAudio}
-            className="w-full"
-            onEnded={() => {
-              URL.revokeObjectURL(activeAudio);
-              setActiveAudio(null);
-              setActiveProjectId(null);
-            }}
-          />
-        </div>
       )}
       <CreateProjectModal
         open={openModal}

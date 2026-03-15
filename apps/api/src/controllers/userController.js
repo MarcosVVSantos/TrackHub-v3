@@ -1,7 +1,5 @@
-const fs = require("fs/promises");
-const path = require("path");
 const userService = require("../services/userService");
-const config = require("../config");
+const storage = require("../services/storageService");
 
 async function getMe(req, res, next) {
   try {
@@ -30,18 +28,24 @@ async function uploadAvatar(req, res, next) {
     }
 
     const current = await userService.getMe(req.user.sub);
-    const avatarUrl = `${config.publicUrl}/uploads/${req.file.filename}`;
-    const updated = await userService.updateAvatar(req.user.sub, avatarUrl);
+    const { url } = await storage.uploadFile(req.file.buffer, req.file.originalname, req.file.mimetype);
+    const updated = await userService.updateAvatar(req.user.sub, url);
 
     if (current?.avatarUrl) {
-      const filename = current.avatarUrl.split("/uploads/")[1];
-      if (filename) {
-        const filePath = path.join(config.rootDir, config.uploadDir, filename);
-        fs.unlink(filePath).catch(() => null);
-      }
+      const oldKey = current.avatarUrl.split("/").pop();
+      await storage.deleteFile(oldKey);
     }
 
     res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function explore(req, res, next) {
+  try {
+    const data = await userService.listExplore(req.user.sub, req.query.q || "");
+    res.json(data);
   } catch (error) {
     next(error);
   }
@@ -51,4 +55,5 @@ module.exports = {
   getMe,
   updateMe,
   uploadAvatar,
+  explore,
 };

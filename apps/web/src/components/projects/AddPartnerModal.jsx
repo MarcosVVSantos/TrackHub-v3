@@ -3,7 +3,7 @@ import { X, UserPlus, Loader2 } from "lucide-react";
 import { apiRequest, getAccessToken } from "../../api/client";
 
 function AddPartnerModal({ open, project, onClose }) {
-  const [form, setForm] = useState({ email: "", username: "", role: "viewer" });
+  const [form, setForm] = useState({ email: "", username: "", role: "viewer", roleLabel: "" });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -54,6 +54,12 @@ function AddPartnerModal({ open, project, onClose }) {
             placeholder="Username"
             value={form.username}
             onChange={(event) => setForm({ ...form, username: event.target.value })}
+          />
+          <input
+            className="input"
+            placeholder="Função no projeto (ex: Produtor, Vocal)"
+            value={form.roleLabel}
+            onChange={(event) => setForm({ ...form, roleLabel: event.target.value })}
           />
           <select
             className="input"

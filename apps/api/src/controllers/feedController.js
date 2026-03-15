@@ -18,6 +18,15 @@ async function listProductions(req, res, next) {
   }
 }
 
+async function listProjectPosts(req, res, next) {
+  try {
+    const feed = await feedService.listProjectPosts(req.user.sub);
+    res.json(feed);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function listSocial(req, res, next) {
   try {
     const feed = await feedService.listSocialPosts(req.user.sub);
@@ -48,7 +57,7 @@ async function getTrack(req, res, next) {
 async function likeTrack(req, res, next) {
   try {
     const result = await feedService.likeTrack(req.params.id, req.user.sub);
-    res.status(201).json(result);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -102,7 +111,7 @@ async function updateTrack(req, res, next) {
 async function likeSocial(req, res, next) {
   try {
     const result = await feedService.likeSocialPost(req.params.id, req.user.sub);
-    res.status(201).json(result);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -112,6 +121,15 @@ async function commentSocial(req, res, next) {
   try {
     const result = await feedService.commentSocialPost(req.params.id, req.user.sub, req.body.content);
     res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function listSocialComments(req, res, next) {
+  try {
+    const result = await feedService.listSocialComments(req.params.id);
+    res.json({ items: result });
   } catch (error) {
     next(error);
   }
@@ -165,6 +183,7 @@ async function unsavePlaylist(req, res, next) {
 module.exports = {
   listFeed,
   listProductions,
+  listProjectPosts,
   listSocial,
   createSocial,
   getTrack,
@@ -176,6 +195,7 @@ module.exports = {
   playTrack,
   likeSocial,
   commentSocial,
+  listSocialComments,
   saveSocial,
   unsaveSocial,
   listPlaylists,

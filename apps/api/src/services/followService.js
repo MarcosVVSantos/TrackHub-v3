@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { createNotification } = require("./notificationService");
 
 async function listFollowing(userId) {
   return prisma.follow.findMany({
@@ -20,9 +21,24 @@ async function followUser(userId, targetId) {
   });
   if (existing) return existing;
 
-  return prisma.follow.create({
+  const follow = await prisma.follow.create({
     data: { followerId: userId, followingId: targetId },
   });
+
+  const follower = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, username: true },
+  });
+
+  await createNotification({
+    userId: targetId,
+    actorId: userId,
+    type: "follow",
+    message: `${follower?.name || "Alguém"} começou a te seguir`,
+    link: `/profile/${follower?.username || userId}`,
+  });
+
+  return follow;
 }
 
 async function unfollowUser(userId, targetId) {

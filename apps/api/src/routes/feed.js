@@ -6,9 +6,11 @@ const router = express.Router();
 
 router.get("/", authenticate, controller.listFeed);
 router.get("/productions", authenticate, controller.listProductions);
+router.get("/projects", authenticate, controller.listProjectPosts);
 router.get("/social", authenticate, controller.listSocial);
 router.post("/social", authenticate, controller.createSocial);
 router.post("/social/:id/like", authenticate, controller.likeSocial);
+router.get("/social/:id/comments", authenticate, controller.listSocialComments);
 router.post("/social/:id/comment", authenticate, controller.commentSocial);
 router.post("/social/:id/save", authenticate, controller.saveSocial);
 router.delete("/social/:id/save", authenticate, controller.unsaveSocial);

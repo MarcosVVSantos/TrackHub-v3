@@ -1,10 +1,8 @@
-const fs = require("fs");
-const path = require("path");
 const projectService = require("../services/projectService");
 const commentService = require("../services/commentService");
 const fileService = require("../services/fileService");
 const taskService = require("../services/taskService");
-const config = require("../config");
+const storage = require("../services/storageService");
 
 async function listProjects(req, res, next) {
   try {
@@ -125,6 +123,33 @@ async function invitePartner(req, res, next) {
   }
 }
 
+async function listInvites(req, res, next) {
+  try {
+    const invites = await projectService.listInvites(req.user.sub);
+    res.json(invites);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function acceptInvite(req, res, next) {
+  try {
+    const result = await projectService.acceptInvite(req.user.sub, req.params.inviteId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function declineInvite(req, res, next) {
+  try {
+    const result = await projectService.declineInvite(req.user.sub, req.params.inviteId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function updateRole(req, res, next) {
   try {
     const result = await projectService.updatePartnerRole(req.user.sub, req.params.id, req.body);
@@ -172,18 +197,24 @@ async function listFiles(req, res, next) {
 
 async function addFile(req, res, next) {
   try {
-    const filePayload = {
-      ...req.file,
-      url: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`,
-    };
-
+    const { url, key } = await storage.uploadFile(req.file.buffer, req.file.originalname, req.file.mimetype);
     const file = await fileService.addProjectFile({
       projectId: req.params.id,
       uploaderId: req.user.sub,
-      file: filePayload,
+      file: { ...req.file, url, filename: key },
       versionName: req.body.version,
     });
     res.status(201).json(file);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function uploadCover(req, res, next) {
+  try {
+    const { url } = await storage.uploadFile(req.file.buffer, req.file.originalname, req.file.mimetype);
+    const project = await projectService.updateProject(req.user.sub, req.params.id, { coverUrl: url });
+    res.json({ coverUrl: project.coverUrl });
   } catch (error) {
     next(error);
   }
@@ -218,12 +249,16 @@ module.exports = {
   statusHistory,
   streamAudio,
   invitePartner,
+  listInvites,
+  acceptInvite,
+  declineInvite,
   updateRole,
   removePartner,
   listComments,
   addComment,
   listFiles,
   addFile,
+  uploadCover,
   listTasks,
   addTask,
 };

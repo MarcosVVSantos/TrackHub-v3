@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const config = require("./config");
 const errorHandler = require("./middleware/errorHandler");
 
@@ -12,12 +11,14 @@ const trackRoutes = require("./routes/tracks");
 const dashboardRoutes = require("./routes/dashboard");
 const notificationRoutes = require("./routes/notifications");
 const followRoutes = require("./routes/follows");
+const profileRoutes = require("./routes/profiles");
+const calendarRoutes = require("./routes/calendar");
+const commentRoutes = require("./routes/comments");
 
 const app = express();
 
 app.use(cors({ origin: config.webUrl, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
-app.use(`/uploads`, express.static(path.join(config.rootDir, config.uploadDir)));
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -31,6 +32,9 @@ app.use("/tracks", trackRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/follows", followRoutes);
+app.use("/profiles", profileRoutes);
+app.use("/calendar", calendarRoutes);
+app.use("/comments", commentRoutes);
 
 app.use(errorHandler);
 

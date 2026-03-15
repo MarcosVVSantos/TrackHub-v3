@@ -11,9 +11,12 @@ import {
   Layers,
   Sparkles,
   Send,
+  UserPlus,
+  Check,
 } from "lucide-react";
-import { apiRequest, getAccessToken } from "../api/client";
+import { API_URL, apiRequest, getAccessToken } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { usePlayer } from "../context/PlayerContext";
 import Skeleton from "../components/Skeleton";
 
 const TABS = [
@@ -70,18 +73,27 @@ function Feed() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [productions, setProductions] = useState([]);
+  const [projectPosts, setProjectPosts] = useState([]);
   const [socialPosts, setSocialPosts] = useState([]);
   const [playlists, setPlaylists] = useState([]);
-  const [nowPlaying, setNowPlaying] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const player = usePlayer();
   const [playlistPlaying, setPlaylistPlaying] = useState(null);
   const [playlistIndex, setPlaylistIndex] = useState(0);
+  const [playlistProgress, setPlaylistProgress] = useState(0);
+  const [playlistDuration, setPlaylistDuration] = useState(0);
   const [showPostModal, setShowPostModal] = useState(false);
-  const audioRef = useRef(null);
+  const [commentsByPost, setCommentsByPost] = useState({});
+  const [commentMenuId, setCommentMenuId] = useState(null);
+  const [editingComment, setEditingComment] = useState(null);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [removingCommentId, setRemovingCommentId] = useState(null);
   const playlistAudioRef = useRef(null);
   const token = getAccessToken();
+  const currentTrack = player?.current;
+  const isPlaying = player?.isPlaying;
+  const progress = player?.progress || 0;
+  const duration = player?.duration || 0;
 
   async function loadTab(tabId) {
     if (!token) {
@@ -98,8 +110,12 @@ function Feed() {
         const data = await apiRequest("/feed/playlists", { token });
         setPlaylists(data);
       } else {
-        const data = await apiRequest("/feed/productions", { token });
-        setProductions(data);
+        const [trackData, projectData] = await Promise.all([
+          apiRequest("/feed/productions", { token }),
+          apiRequest("/feed/projects", { token }),
+        ]);
+        setProductions(trackData);
+        setProjectPosts(projectData);
       }
     } catch (err) {
       setError(err.message);
@@ -112,53 +128,93 @@ function Feed() {
     loadTab(activeTab);
   }, [activeTab]);
 
-  function handleTimeUpdate() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    setProgress(audio.currentTime);
-    setDuration(audio.duration || 0);
-  }
-
   function handlePlaylistTimeUpdate() {
     const audio = playlistAudioRef.current;
     if (!audio) return;
-    setProgress(audio.currentTime);
-    setDuration(audio.duration || 0);
+    setPlaylistProgress(audio.currentTime);
+    setPlaylistDuration(audio.duration || 0);
   }
 
   async function handlePlayTrack(track) {
     if (!token) return;
-    const audio = audioRef.current;
-    if (!audio) return;
     if (playlistAudioRef.current) {
       playlistAudioRef.current.pause();
       setPlaylistPlaying(null);
     }
-    if (nowPlaying?.id === track.id && isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
+    await apiRequest(`/tracks/${track.id}/play`, { method: "POST", token });
+    if (player?.current?.id === track.id) {
+      player.togglePlay();
       return;
     }
-    if (audio.src !== track.audioUrl) {
-      audio.src = track.audioUrl;
+    player?.playTrack({
+      id: track.id,
+      title: track.title,
+      audioUrl: track.audioUrl,
+      coverUrl: track.coverUrl,
+      projectId: track.project?.id,
+      projectName: track.project?.name,
+      creatorName: track.project?.owner?.name,
+      description: track.project?.description,
+      tags: track.project?.tags || [],
+      partners: (track.project?.members || []).map((member) => member.user).filter(Boolean),
+    });
+  }
+
+  async function handlePlayProject(project) {
+    if (!token) return;
+    if (playlistAudioRef.current) {
+      playlistAudioRef.current.pause();
+      setPlaylistPlaying(null);
     }
-    await apiRequest(`/tracks/${track.id}/play`, { method: "POST", token });
-    audio.play();
-    setNowPlaying(track);
-    setIsPlaying(true);
+    const response = await fetch(`${API_URL}/projects/${project.id}/audio`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      setError("Não foi possível reproduzir o áudio do projeto");
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    if (player?.current?.id === project.id) {
+      player.togglePlay();
+      return;
+    }
+    player?.playTrack({
+      id: project.id,
+      title: project.name,
+      audioUrl: url,
+      isObjectUrl: true,
+      coverUrl: project.coverUrl,
+      projectId: project.id,
+      projectName: project.name,
+      creatorName: project.owner?.name,
+      description: project.description,
+      tags: project.tags || [],
+      partners: (project.members || []).map((member) => member.user).filter(Boolean),
+    });
   }
 
   function handlePauseTrack() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.pause();
-    setIsPlaying(false);
+    player?.togglePlay();
   }
 
   async function handleLikeTrack(trackId) {
     if (!token) return;
+    setProductions((prev) =>
+      prev.map((track) =>
+        track.id === trackId
+          ? {
+              ...track,
+              liked: !track.liked,
+              _count: {
+                ...track._count,
+                likes: (track._count?.likes || 0) + (track.liked ? -1 : 1),
+              },
+            }
+          : track
+      )
+    );
     await apiRequest(`/tracks/${trackId}/like`, { method: "POST", token });
-    loadTab("productions");
   }
 
   async function handleSaveTrack(track) {
@@ -177,6 +233,41 @@ function Feed() {
     loadTab("productions");
   }
 
+  async function handleLikeProjectPost(postId) {
+    if (!token) return;
+    setProjectPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              liked: !post.liked,
+              _count: {
+                ...post._count,
+                likes: (post._count?.likes || 0) + (post.liked ? -1 : 1),
+              },
+            }
+          : post
+      )
+    );
+    await apiRequest(`/feed/social/${postId}/like`, { method: "POST", token });
+  }
+
+  async function handleSaveProjectPost(postId, saved) {
+    if (!token) return;
+    if (saved) {
+      await apiRequest(`/feed/social/${postId}/save`, { method: "DELETE", token });
+    } else {
+      await apiRequest(`/feed/social/${postId}/save`, { method: "POST", token });
+    }
+    loadTab("productions");
+  }
+
+  async function handleCommentProjectPost(postId, content) {
+    if (!token) return;
+    await apiRequest(`/feed/social/${postId}/comment`, { method: "POST", body: { content }, token });
+    loadTab("productions");
+  }
+
   async function handleUpdateTrackTitle(trackId, title) {
     if (!token) return;
     await apiRequest(`/tracks/${trackId}`, { method: "PATCH", body: { title }, token });
@@ -192,8 +283,21 @@ function Feed() {
 
   async function handleLikePost(postId) {
     if (!token) return;
+    setSocialPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              liked: !post.liked,
+              _count: {
+                ...post._count,
+                likes: (post._count?.likes || 0) + (post.liked ? -1 : 1),
+              },
+            }
+          : post
+      )
+    );
     await apiRequest(`/feed/social/${postId}/like`, { method: "POST", token });
-    loadTab("social");
   }
 
   async function handleSavePost(post) {
@@ -208,23 +312,182 @@ function Feed() {
 
   async function handleCommentPost(postId, content) {
     if (!token) return;
-    await apiRequest(`/feed/social/${postId}/comment`, { method: "POST", body: { content }, token });
-    loadTab("social");
+    const tempId = `temp-${Date.now()}`;
+    const optimistic = {
+      id: tempId,
+      content,
+      createdAt: new Date().toISOString(),
+      user: {
+        id: user?.id,
+        name: user?.name,
+        username: user?.username,
+        avatarUrl: user?.avatarUrl,
+      },
+    };
+    setCommentsByPost((prev) => {
+      const current = prev[postId] || { items: [] };
+      return {
+        ...prev,
+        [postId]: {
+          ...current,
+          items: [...(current.items || []), optimistic],
+        },
+      };
+    });
+    setSocialPosts((prev) =>
+      prev.map((item) =>
+        item.id === postId
+          ? { ...item, _count: { ...item._count, comments: (item._count?.comments || 0) + 1 } }
+          : item
+      )
+    );
+    try {
+      const created = await apiRequest(`/feed/social/${postId}/comment`, {
+        method: "POST",
+        body: { content },
+        token,
+      });
+      setCommentsByPost((prev) => {
+        const current = prev[postId] || { items: [] };
+        return {
+          ...prev,
+          [postId]: {
+            ...current,
+            items: (current.items || []).map((item) => (item.id === tempId ? created : item)),
+          },
+        };
+      });
+    } catch (err) {
+      setCommentsByPost((prev) => {
+        const current = prev[postId] || { items: [] };
+        return {
+          ...prev,
+          [postId]: {
+            ...current,
+            error: err.message,
+            items: (current.items || []).filter((item) => item.id !== tempId),
+          },
+        };
+      });
+      setSocialPosts((prev) =>
+        prev.map((item) =>
+          item.id === postId
+            ? { ...item, _count: { ...item._count, comments: Math.max((item._count?.comments || 1) - 1, 0) } }
+            : item
+        )
+      );
+    }
+  }
+
+  function startEditComment(postId, comment) {
+    setEditingComment({ postId, id: comment.id });
+    setCommentDraft(comment.content);
+    setCommentMenuId(null);
+  }
+
+  function cancelEditComment() {
+    setEditingComment(null);
+    setCommentDraft("");
+  }
+
+  async function handleUpdateComment(postId, commentId) {
+    if (!token) return;
+    const trimmed = commentDraft.trim();
+    if (!trimmed) return;
+    await apiRequest(`/comments/${commentId}`, {
+      method: "PATCH",
+      body: { content: trimmed },
+      token,
+    });
+    setCommentsByPost((prev) => {
+      const current = prev[postId] || { items: [] };
+      return {
+        ...prev,
+        [postId]: {
+          ...current,
+          items: (current.items || []).map((item) =>
+            item.id === commentId ? { ...item, content: trimmed } : item
+          ),
+        },
+      };
+    });
+    cancelEditComment();
+  }
+
+  async function handleDeleteComment(postId, commentId) {
+    if (!token) return;
+    setRemovingCommentId(commentId);
+    await apiRequest(`/comments/${commentId}`, { method: "DELETE", token });
+    setTimeout(() => {
+      setCommentsByPost((prev) => {
+        const current = prev[postId] || { items: [] };
+        return {
+          ...prev,
+          [postId]: {
+            ...current,
+            items: (current.items || []).filter((item) => item.id !== commentId),
+          },
+        };
+      });
+      setSocialPosts((prev) =>
+        prev.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                _count: {
+                  ...post._count,
+                  comments: Math.max((post._count?.comments || 1) - 1, 0),
+                },
+              }
+            : post
+        )
+      );
+      setRemovingCommentId(null);
+      setConfirmDeleteId(null);
+    }, 200);
+  }
+
+  async function toggleComments(postId) {
+    setCommentsByPost((prev) => {
+      const current = prev[postId] || { open: false, items: [] };
+      return {
+        ...prev,
+        [postId]: {
+          ...current,
+          open: !current.open,
+        },
+      };
+    });
+
+    const current = commentsByPost[postId];
+    if (current?.items?.length || current?.loading) return;
+    setCommentsByPost((prev) => ({
+      ...prev,
+      [postId]: { ...prev[postId], loading: true, error: "" },
+    }));
+    try {
+      const data = await apiRequest(`/feed/social/${postId}/comments`, { token });
+      setCommentsByPost((prev) => ({
+        ...prev,
+        [postId]: { ...prev[postId], loading: false, items: data.items || [] },
+      }));
+    } catch (err) {
+      setCommentsByPost((prev) => ({
+        ...prev,
+        [postId]: { ...prev[postId], loading: false, error: err.message },
+      }));
+    }
   }
 
   async function handlePlayPlaylist(playlist) {
     if (!token) return;
     const audio = playlistAudioRef.current;
     if (!audio || playlist.tracks.length === 0) return;
-    if (audioRef.current) {
-      audioRef.current.pause();
-      setNowPlaying(null);
-    }
+    player?.stop();
     setPlaylistPlaying(playlist);
     setPlaylistIndex(0);
     audio.src = playlist.tracks[0].track.audioUrl;
     audio.play();
-    setIsPlaying(true);
   }
 
   function handlePlaylistEnded() {
@@ -232,7 +495,7 @@ function Feed() {
     if (!audio || !playlistPlaying) return;
     const nextIndex = playlistIndex + 1;
     if (nextIndex >= playlistPlaying.tracks.length) {
-      setIsPlaying(false);
+      setPlaylistPlaying(null);
       return;
     }
     setPlaylistIndex(nextIndex);
@@ -248,6 +511,20 @@ function Feed() {
       await apiRequest(`/feed/playlists/${playlist.id}/save`, { method: "POST", token });
     }
     loadTab("playlists");
+  }
+
+  async function handleToggleFollow(ownerId, isFollowing) {
+    if (!token || !ownerId) return;
+    if (isFollowing) {
+      await apiRequest(`/follows/${ownerId}`, { method: "DELETE", token });
+    } else {
+      await apiRequest(`/follows/${ownerId}`, { method: "POST", token });
+    }
+    setProductions((prev) =>
+      prev.map((item) =>
+        item.project?.ownerId === ownerId ? { ...item, isFollowing: !isFollowing } : item
+      )
+    );
   }
 
   if (!token) {
@@ -277,7 +554,6 @@ function Feed() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
-      <audio ref={audioRef} onTimeUpdate={handleTimeUpdate} onEnded={() => setIsPlaying(false)} className="hidden" />
       <audio
         ref={playlistAudioRef}
         onTimeUpdate={handlePlaylistTimeUpdate}
@@ -291,12 +567,17 @@ function Feed() {
             Descubra produções, interaja e acompanhe playlists dos artistas que você segue.
           </p>
         </div>
-        {activeTab === "social" && (
-          <button className="btn-primary w-fit" onClick={() => setShowPostModal(true)}>
-            <Plus size={16} />
-            Criar post
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <Link className="btn-secondary" to="/explore">
+            Explorar artistas
+          </Link>
+          {activeTab === "social" && (
+            <button className="btn-primary w-fit" onClick={() => setShowPostModal(true)}>
+              <Plus size={16} />
+              Criar post
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -323,12 +604,12 @@ function Feed() {
 
       {!loading && activeTab === "productions" && (
         <div className="space-y-4">
-          {nowPlaying && (
+          {currentTrack && (
             <div className="card sticky top-24 z-10 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-gray-700 dark:text-brand-text">Tocando agora</p>
-                  <p className="text-sm text-gray-500 dark:text-brand-textMuted">{nowPlaying.title}</p>
+                  <p className="text-sm text-gray-500 dark:text-brand-textMuted">{currentTrack.title}</p>
                 </div>
                 <button className="btn-secondary" onClick={handlePauseTrack}>
                   <Pause size={16} />
@@ -338,79 +619,156 @@ function Feed() {
               <div className="h-1 w-full rounded-full bg-gray-100 dark:bg-brand-darkOutline">
                 <div
                   className="h-1 rounded-full bg-brand-primary"
-                  style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}
+                  style={{ width: `${playlistDuration ? (playlistProgress / playlistDuration) * 100 : 0}%` }}
                 />
               </div>
             </div>
           )}
 
-          {productions.length === 0 ? (
+          {productions.length === 0 && projectPosts.length === 0 ? (
             <EmptyState
               title="Seu feed está vazio"
               description="Siga artistas para ver as produções mais recentes por aqui."
-              cta={{ label: "Explorar artistas", href: "/feed" }}
+              cta={{ label: "Explorar artistas", href: "/explore" }}
             />
           ) : (
-            productions.map((track) => (
-              <div key={track.id} className="card space-y-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div className="flex gap-4">
-                    <div className="h-16 w-16 overflow-hidden rounded-xl bg-gray-100 dark:bg-brand-darkOutline">
-                      {track.coverUrl ? (
-                        <img
-                          src={track.coverUrl}
-                          alt={track.title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-400">
-                          <Music size={20} />
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        {user?.id === track.project?.ownerId ? (
-                          <EditableTitle
-                            value={track.title}
-                            onSave={(value) => handleUpdateTrackTitle(track.id, value)}
+            <>
+              {projectPosts.map((post) => (
+                <div key={post.id} className="card space-y-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="flex gap-4">
+                      <div className="h-20 w-20 overflow-hidden rounded-2xl bg-gray-100 dark:bg-brand-darkOutline">
+                        {post.project?.coverUrl ? (
+                          <img
+                            src={post.project.coverUrl}
+                            alt={post.project?.name}
+                            className="h-full w-full object-cover"
                           />
                         ) : (
-                          <h3 className="text-lg font-semibold text-gray-800 dark:text-brand-text">{track.title}</h3>
+                          <div className="flex h-full w-full items-center justify-center text-gray-400">
+                            <Layers size={20} />
+                          </div>
                         )}
                       </div>
-                      <button className="text-xs font-semibold text-brand-primary">
-                        {track.project?.owner?.name || "Autor"}
-                      </button>
-                      <p className="text-sm text-gray-500 dark:text-brand-textMuted">
-                        {track.project?.name}
-                      </p>
+                      <div>
+                        <p className="text-lg font-semibold text-gray-800 dark:text-brand-text">
+                          {post.project?.name}
+                        </p>
+                        <Link
+                          to={`/profile/${post.project?.owner?.username || post.project?.owner?.id}`}
+                          className="text-xs font-semibold text-brand-primary"
+                        >
+                          {post.project?.owner?.name || "Autor"}
+                        </Link>
+                        <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+                          Projeto público
+                        </p>
+                      </div>
                     </div>
+                    <TagList tags={post.project?.tags} />
                   </div>
-                  <TagList tags={track.project?.tags} />
-                </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <button className="btn-secondary" onClick={() => handlePlayTrack(track)}>
-                    {nowPlaying?.id === track.id && isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                    {nowPlaying?.id === track.id && isPlaying ? "Pausar" : "Tocar"}
-                  </button>
-                  <button className="btn-secondary" onClick={() => handleLikeTrack(track.id)}>
-                    <Heart size={16} />
-                    Curtir ({track._count?.likes || 0})
-                  </button>
-                  <button className="btn-secondary" onClick={() => handleSaveTrack(track)}>
-                    <Bookmark size={16} />
-                    {track.saved ? "Salvo" : "Salvar"}
-                  </button>
-                  <span className="text-xs text-gray-400 dark:text-brand-textMuted">
-                    {track._count?.plays || 0} plays
-                  </span>
-                </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button className="btn-secondary" onClick={() => handlePlayProject(post.project)}>
+                      {currentTrack?.id === post.project?.id && isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                        {currentTrack?.id === post.project?.id && isPlaying ? "Pausar" : "Play"}
+                    </button>
+                    <button className="btn-secondary" onClick={() => handleLikeProjectPost(post.id)}>
+                      <Heart size={16} className={post.liked ? "fill-rose-500 text-rose-500" : ""} />
+                      Curtir ({post._count?.likes || 0})
+                    </button>
+                    <button className="btn-secondary" onClick={() => handleSaveProjectPost(post.id, post.saved)}>
+                      <Bookmark size={16} />
+                      {post.saved ? "Salvo" : "Salvar"}
+                    </button>
+                    {user?.id !== post.project?.ownerId && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => handleToggleFollow(post.project?.ownerId, post.isFollowing)}
+                      >
+                        {post.isFollowing ? <Check size={16} /> : <UserPlus size={16} />}
+                        {post.isFollowing ? "Seguindo" : "Seguir"}
+                      </button>
+                    )}
+                  </div>
 
-                <TrackCommentBox onSubmit={(content) => handleCommentTrack(track.id, content)} />
-              </div>
-            ))
+                  <TrackCommentBox onSubmit={(content) => handleCommentProjectPost(post.id, content)} />
+                </div>
+              ))}
+
+              {productions.map((track) => (
+                <div key={track.id} className="card space-y-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="flex gap-4">
+                      <div className="h-16 w-16 overflow-hidden rounded-xl bg-gray-100 dark:bg-brand-darkOutline">
+                        {track.coverUrl ? (
+                          <img
+                            src={track.coverUrl}
+                            alt={track.title}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-gray-400">
+                            <Music size={20} />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          {user?.id === track.project?.ownerId ? (
+                            <EditableTitle
+                              value={track.title}
+                              onSave={(value) => handleUpdateTrackTitle(track.id, value)}
+                            />
+                          ) : (
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-brand-text">{track.title}</h3>
+                          )}
+                        </div>
+                        <Link
+                          to={`/profile/${track.project?.owner?.username || track.project?.owner?.id}`}
+                          className="text-xs font-semibold text-brand-primary"
+                        >
+                          {track.project?.owner?.name || "Autor"}
+                        </Link>
+                        <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+                          {track.project?.name}
+                        </p>
+                      </div>
+                    </div>
+                    <TagList tags={track.project?.tags} />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button className="btn-secondary" onClick={() => handlePlayTrack(track)}>
+                      {currentTrack?.id === track.id && isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                        {currentTrack?.id === track.id && isPlaying ? "Pausar" : "Tocar"}
+                    </button>
+                    <button className="btn-secondary" onClick={() => handleLikeTrack(track.id)}>
+                      <Heart size={16} className={track.liked ? "fill-rose-500 text-rose-500" : ""} />
+                      Curtir ({track._count?.likes || 0})
+                    </button>
+                    <button className="btn-secondary" onClick={() => handleSaveTrack(track)}>
+                      <Bookmark size={16} />
+                      {track.saved ? "Salvo" : "Salvar"}
+                    </button>
+                    {user?.id !== track.project?.ownerId && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => handleToggleFollow(track.project?.ownerId, track.isFollowing)}
+                      >
+                        {track.isFollowing ? <Check size={16} /> : <UserPlus size={16} />}
+                        {track.isFollowing ? "Seguindo" : "Seguir"}
+                      </button>
+                    )}
+                    <span className="text-xs text-gray-400 dark:text-brand-textMuted">
+                      {track._count?.plays || 0} plays
+                    </span>
+                  </div>
+
+                  <TrackCommentBox onSubmit={(content) => handleCommentTrack(track.id, content)} />
+                </div>
+              ))}
+            </>
           )}
         </div>
       )}
@@ -421,7 +779,7 @@ function Feed() {
             <EmptyState
               title="Nenhuma interação ainda"
               description="Crie um post ou siga artistas para ver os bastidores criativos."
-              cta={{ label: "Encontrar projetos", href: "/projects" }}
+              cta={{ label: "Explorar artistas", href: "/explore" }}
             />
           ) : (
             socialPosts.map((post) => (
@@ -441,18 +799,146 @@ function Feed() {
                 <PostReference post={post} />
                 <div className="flex flex-wrap gap-3">
                   <button className="btn-secondary" onClick={() => handleLikePost(post.id)}>
-                    <Heart size={16} />
+                    <Heart size={16} className={post.liked ? "fill-rose-500 text-rose-500" : ""} />
                     Curtir ({post._count?.likes || 0})
+                  </button>
+                  <button className="btn-secondary" onClick={() => toggleComments(post.id)}>
+                    <MessageCircle size={16} />
+                    Comentários ({post._count?.comments || 0})
                   </button>
                   <button className="btn-secondary" onClick={() => handleSavePost(post)}>
                     <Bookmark size={16} />
                     {post.saved ? "Salvo" : "Salvar"}
                   </button>
                 </div>
-                <TrackCommentBox
-                  placeholder="Comente este post"
-                  onSubmit={(content) => handleCommentPost(post.id, content)}
-                />
+                {commentsByPost[post.id]?.open && (
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-brand-darkOutline dark:bg-brand-darkOutline/60">
+                    {commentsByPost[post.id]?.loading && (
+                      <div className="text-xs text-gray-400 dark:text-brand-textMuted">Carregando comentários...</div>
+                    )}
+                    {commentsByPost[post.id]?.error && (
+                      <div className="text-xs text-rose-500">{commentsByPost[post.id].error}</div>
+                    )}
+                    {!commentsByPost[post.id]?.loading &&
+                      (!commentsByPost[post.id]?.items || commentsByPost[post.id].items.length === 0) && (
+                        <p className="text-xs text-gray-500 dark:text-brand-textMuted">
+                          Nenhum comentário ainda. Seja o primeiro.
+                        </p>
+                      )}
+                    <div className="mt-3 space-y-3">
+                      {(commentsByPost[post.id]?.items || []).map((comment) => {
+                        const isAuthor = comment.user?.id === user?.id;
+                        const isEditing = editingComment?.id === comment.id;
+                        return (
+                          <div
+                            key={comment.id}
+                            className={`group flex gap-3 rounded-lg p-2 transition ${
+                              removingCommentId === comment.id ? "opacity-50" : "opacity-100"
+                            }`}
+                          >
+                            <Avatar user={comment.user} />
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-brand-text">
+                                    @{comment.user?.username}
+                                  </p>
+                                  {isEditing ? (
+                                    <div className="mt-1 space-y-2">
+                                      <input
+                                        className="input"
+                                        value={commentDraft}
+                                        onChange={(event) => setCommentDraft(event.target.value)}
+                                      />
+                                      <div className="flex gap-2">
+                                        <button
+                                          className="btn-secondary"
+                                          type="button"
+                                          onClick={cancelEditComment}
+                                        >
+                                          Cancelar
+                                        </button>
+                                        <button
+                                          className="btn-primary"
+                                          type="button"
+                                          onClick={() => handleUpdateComment(post.id, comment.id)}
+                                        >
+                                          Salvar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-600 dark:text-brand-textMuted">
+                                      {comment.content}
+                                    </p>
+                                  )}
+                                </div>
+                                {isAuthor && !isEditing && (
+                                  <div className="relative">
+                                    <button
+                                      className="rounded-full p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 group-hover:opacity-100"
+                                      onClick={() =>
+                                        setCommentMenuId((prev) => (prev === comment.id ? null : comment.id))
+                                      }
+                                    >
+                                      <span className="text-lg">⋯</span>
+                                    </button>
+                                    {commentMenuId === comment.id && (
+                                      <div className="absolute right-0 mt-1 w-28 rounded-lg border border-gray-100 bg-white p-1 shadow-md dark:border-brand-darkOutline dark:bg-brand-darkSecondary">
+                                        <button
+                                          className="w-full rounded-md px-2 py-1 text-left text-xs hover:bg-gray-50 dark:hover:bg-brand-darkOutline"
+                                          onClick={() => startEditComment(post.id, comment)}
+                                        >
+                                          Editar
+                                        </button>
+                                        <button
+                                          className="w-full rounded-md px-2 py-1 text-left text-xs text-rose-500 hover:bg-rose-50"
+                                          onClick={() => setConfirmDeleteId(comment.id)}
+                                        >
+                                          Excluir
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              {!isEditing && (
+                                <p className="mt-1 text-xs text-gray-400 dark:text-brand-textMuted">
+                                  {formatRelativeTime(comment.createdAt)}
+                                </p>
+                              )}
+                              {confirmDeleteId === comment.id && (
+                                <div className="mt-2 flex items-center gap-2 text-xs">
+                                  <span className="text-gray-500">Excluir comentário?</span>
+                                  <button
+                                    className="btn-secondary"
+                                    type="button"
+                                    onClick={() => setConfirmDeleteId(null)}
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    className="btn-primary"
+                                    type="button"
+                                    onClick={() => handleDeleteComment(post.id, comment.id)}
+                                  >
+                                    Excluir
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4">
+                      <CommentComposer
+                        onSubmit={(content) => handleCommentPost(post.id, content)}
+                        placeholder="Escreva um comentário..."
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -478,7 +964,7 @@ function Feed() {
               <div className="h-1 w-full rounded-full bg-gray-100 dark:bg-brand-darkOutline">
                 <div
                   className="h-1 rounded-full bg-brand-primary"
-                  style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}
+                  style={{ width: `${playlistDuration ? (playlistProgress / playlistDuration) * 100 : 0}%` }}
                 />
               </div>
             </div>
@@ -487,7 +973,7 @@ function Feed() {
             <EmptyState
               title="Sem playlists por aqui"
               description="Siga artistas para descobrir as playlists públicas deles."
-              cta={{ label: "Explorar artistas", href: "/feed" }}
+              cta={{ label: "Explorar artistas", href: "/explore" }}
             />
           ) : (
             playlists.map((playlist) => (
@@ -594,6 +1080,36 @@ function TrackCommentBox({ onSubmit, placeholder = "Adicionar comentário" }) {
       >
         <Send size={16} />
         Enviar
+      </button>
+    </div>
+  );
+}
+
+function CommentComposer({ onSubmit, placeholder }) {
+  const [value, setValue] = useState("");
+
+  function submit() {
+    if (!value.trim()) return;
+    onSubmit(value.trim());
+    setValue("");
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <input
+        className="input flex-1"
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            submit();
+          }
+        }}
+      />
+      <button className="btn-primary" type="button" onClick={submit}>
+        Publicar
       </button>
     </div>
   );

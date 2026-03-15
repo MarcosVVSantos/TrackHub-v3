@@ -10,7 +10,7 @@ const statusOptions = [
 ];
 
 function EditProjectModal({ open, project, onClose, onUpdated, tagsSuggestions }) {
-  const [form, setForm] = useState({ name: "", description: "", status: "idea" });
+  const [form, setForm] = useState({ name: "", description: "", status: "idea", isPublic: false });
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -22,6 +22,7 @@ function EditProjectModal({ open, project, onClose, onUpdated, tagsSuggestions }
         name: project.name || "",
         description: project.description || "",
         status: project.status || "idea",
+        isPublic: Boolean(project.isPublic),
       });
       setTags(project.tags || []);
     }
@@ -52,6 +53,10 @@ function EditProjectModal({ open, project, onClose, onUpdated, tagsSuggestions }
   async function handleSubmit(event) {
     event.preventDefault();
     if (!project) return;
+    if (form.isPublic && !project.coverUrl) {
+      setError("Envie uma capa antes de publicar o projeto.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -108,6 +113,14 @@ function EditProjectModal({ open, project, onClose, onUpdated, tagsSuggestions }
                 {option.label}
               </option>
             ))}
+          </select>
+          <select
+            className="input"
+            value={form.isPublic ? "public" : "private"}
+            onChange={(event) => setForm({ ...form, isPublic: event.target.value === "public" })}
+          >
+            <option value="private">Privado</option>
+            <option value="public">Público</option>
           </select>
           <div className="space-y-2">
             <input

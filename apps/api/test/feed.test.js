@@ -104,6 +104,14 @@ after(async () => {
     await prisma.playlistSave.deleteMany({ where: { playlistId: playlist.id } });
     await prisma.playlist.delete({ where: { id: playlist.id } });
   }
+  await prisma.notification.deleteMany({
+    where: {
+      OR: [
+        { userId: { in: [follower?.id, artist?.id].filter(Boolean) } },
+        { actorId: { in: [follower?.id, artist?.id].filter(Boolean) } },
+      ],
+    },
+  });
   if (track?.id) {
     await prisma.trackPlay.deleteMany({ where: { trackId: track.id } });
     await prisma.trackLike.deleteMany({ where: { trackId: track.id } });
@@ -168,7 +176,23 @@ test("POST /feed/social/:id/like likes post", async () => {
     .post(`/feed/social/${post.id}/like`)
     .set("Authorization", `Bearer ${followerToken}`);
 
-  assert.strictEqual(response.statusCode, 201);
+  assert.strictEqual(response.statusCode, 200);
+});
+
+test("GET /feed/social/:id/comments lists comments", async () => {
+  const created = await request(app)
+    .post(`/feed/social/${post.id}/comment`)
+    .set("Authorization", `Bearer ${followerToken}`)
+    .send({ content: "Comentário" });
+
+  assert.strictEqual(created.statusCode, 201);
+
+  const response = await request(app)
+    .get(`/feed/social/${post.id}/comments`)
+    .set("Authorization", `Bearer ${followerToken}`);
+
+  assert.strictEqual(response.statusCode, 200);
+  assert.ok(response.body.items.some((item) => item.content === "Comentário"));
 });
 
 test("POST /tracks/:id/save saves a track", async () => {

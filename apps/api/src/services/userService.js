@@ -9,6 +9,8 @@ async function getMe(userId) {
       username: true,
       name: true,
       avatarUrl: true,
+      bio: true,
+      isActive: true,
       theme: true,
       createdAt: true,
     },
@@ -19,6 +21,7 @@ async function updateMe(userId, data) {
   const payload = {
     name: data.name?.trim(),
     username: data.username?.trim(),
+    bio: data.bio,
     theme: data.theme,
   };
 
@@ -49,6 +52,12 @@ async function updateMe(userId, data) {
     throw error;
   }
 
+  if (payload.bio && payload.bio.length > 280) {
+    const error = new Error("A bio deve ter no máximo 280 caracteres");
+    error.status = 400;
+    throw error;
+  }
+
   if (payload.username && payload.username.length < 3) {
     const error = new Error("O username deve ter pelo menos 3 caracteres");
     error.status = 400;
@@ -64,6 +73,8 @@ async function updateMe(userId, data) {
       username: true,
       name: true,
       avatarUrl: true,
+      bio: true,
+      isActive: true,
       theme: true,
       createdAt: true,
     },
@@ -80,13 +91,78 @@ async function updateAvatar(userId, avatarUrl) {
       username: true,
       name: true,
       avatarUrl: true,
+      bio: true,
+      isActive: true,
       theme: true,
     },
   });
+}
+
+async function listExplore(userId, query) {
+  const where = {
+    id: { not: userId },
+    isActive: true,
+    ...(query
+      ? {
+          OR: [
+            { name: { contains: query } },
+            { username: { contains: query } },
+          ],
+        }
+      : {}),
+  };
+
+  const users = await prisma.user.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      avatarUrl: true,
+    },
+  });
+
+  const userIds = users.map((item) => item.id);
+  if (!userIds.length) return [];
+
+  const [followers, projects, following] = await Promise.all([
+    prisma.follow.groupBy({
+      by: ["followingId"],
+      where: { followingId: { in: userIds } },
+      _count: { _all: true },
+    }),
+    prisma.project.groupBy({
+      by: ["ownerId"],
+      where: {
+        ownerId: { in: userIds },
+        archivedAt: null,
+        tracks: { some: { isPublic: true } },
+      },
+      _count: { _all: true },
+    }),
+    prisma.follow.findMany({
+      where: { followerId: userId, followingId: { in: userIds } },
+      select: { followingId: true },
+    }),
+  ]);
+
+  const followersMap = new Map(followers.map((item) => [item.followingId, item._count._all]));
+  const projectsMap = new Map(projects.map((item) => [item.ownerId, item._count._all]));
+  const followingSet = new Set(following.map((item) => item.followingId));
+
+  return users
+    .map((item) => ({
+      ...item,
+      followersCount: followersMap.get(item.id) || 0,
+      projectsCount: projectsMap.get(item.id) || 0,
+      isFollowing: followingSet.has(item.id),
+    }))
+    .sort((a, b) => b.projectsCount - a.projectsCount);
 }
 
 module.exports = {
   getMe,
   updateMe,
   updateAvatar,
+  listExplore,
 };

@@ -6,13 +6,14 @@ function ProfileForm({ user, onUpdated }) {
   const [form, setForm] = useState({
     name: user?.name || "",
     username: user?.username || "",
+    bio: user?.bio || "",
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   const hasChanges = useMemo(() => {
-    return form.name !== user?.name || form.username !== user?.username;
+    return form.name !== user?.name || form.username !== user?.username || form.bio !== user?.bio;
   }, [form, user]);
 
   const usernameError = useMemo(() => {
@@ -60,6 +61,13 @@ function ProfileForm({ user, onUpdated }) {
           onChange={(event) => setForm({ ...form, username: event.target.value })}
         />
         <input className="input md:col-span-2" value={user?.email || ""} readOnly />
+        <textarea
+          className="input md:col-span-2"
+          placeholder="Bio curta"
+          rows={3}
+          value={form.bio}
+          onChange={(event) => setForm({ ...form, bio: event.target.value })}
+        />
         {usernameError && <p className="text-xs text-red-500 md:col-span-2">{usernameError}</p>}
         {error && <p className="text-sm text-red-500 md:col-span-2">{error}</p>}
         {message && <p className="text-sm text-green-500 md:col-span-2">{message}</p>}

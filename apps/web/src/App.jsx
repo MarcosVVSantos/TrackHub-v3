@@ -6,12 +6,22 @@ import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Feed from "./pages/Feed";
 import Account from "./pages/Account";
+import Profile from "./pages/Profile";
+import Explore from "./pages/Explore";
+import Calendar from "./pages/Calendar";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Header from "./components/Header";
+import GlobalPlayer from "./components/GlobalPlayer";
+import { usePlayer } from "./context/PlayerContext";
 
 function App() {
+  const player = usePlayer();
+  const hasPlayer = Boolean(player?.current);
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-brand-dark dark:text-brand-text">
+    <div className={`min-h-screen bg-gray-50 text-gray-900 dark:bg-brand-dark dark:text-brand-text ${
+      hasPlayer ? "pb-28" : ""
+    }`}>
       <Header />
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -34,6 +44,14 @@ function App() {
           }
         />
         <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <Calendar />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/projects/:id"
           element={
             <ProtectedRoute>
@@ -49,8 +67,25 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/profile/:id"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/feed" element={<Feed />} />
+        <Route
+          path="/explore"
+          element={
+            <ProtectedRoute>
+              <Explore />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
+      <GlobalPlayer />
     </div>
   );
 }

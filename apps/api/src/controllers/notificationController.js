@@ -18,7 +18,17 @@ async function markRead(req, res, next) {
   }
 }
 
+async function markAllRead(req, res, next) {
+  try {
+    const result = await notificationService.markAllRead(req.user.sub);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   list,
   markRead,
+  markAllRead,
 };

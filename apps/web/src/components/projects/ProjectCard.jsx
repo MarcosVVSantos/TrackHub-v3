@@ -14,16 +14,14 @@ function ProjectCard({
 }) {
 
   return (
-  <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-darkOutline dark:bg-brand-darkSecondary">
-      <div className="flex items-start justify-between">
+    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-darkOutline dark:bg-brand-darkSecondary">
+      <Link to={`/projects/${project.id}`} className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-accent/30">
             <Music2 size={18} className="text-brand-primary" />
           </div>
           <div>
-            <Link to={`/projects/${project.id}`} className="text-sm font-semibold text-brand-primary">
-              {project.name}
-            </Link>
+            <p className="text-sm font-semibold text-brand-primary">{project.name}</p>
             <p className="text-xs text-gray-500 line-clamp-1">
               {project.description || "Sem descrição"}
             </p>
@@ -32,7 +30,7 @@ function ProjectCard({
         <span className="rounded-full bg-brand-accent/20 px-2 py-1 text-[10px] text-brand-primary">
           {statusLabel || project.status}
         </span>
-      </div>
+      </Link>
       <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-400">
         {(project.tags || []).map((tag) => (
           <button

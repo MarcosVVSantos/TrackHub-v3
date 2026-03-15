@@ -23,6 +23,10 @@ async function listProjects(userId, { tags, status } = {}) {
     include: {
       members: true,
       tasks: true,
+      events: {
+        orderBy: { startsAt: "asc" },
+        take: 3,
+      },
       files: {
         where: { type: { startsWith: "audio/" } },
         orderBy: { createdAt: "desc" },
@@ -69,11 +73,20 @@ async function getProject(userId, projectId) {
       statusLog: true,
       files: { include: { versions: true } },
       tracks: true,
+      events: {
+        include: { participants: { include: { user: true } }, createdBy: true },
+        orderBy: { startsAt: "asc" },
+      },
     },
   });
 }
 
 async function createProject(userId, data) {
+  if (data.isPublic && !data.coverUrl) {
+    const error = new Error("Projetos públicos precisam de capa");
+    error.status = 400;
+    throw error;
+  }
   const count = await prisma.project.count({
     where: {
       ownerId: userId,
@@ -89,11 +102,14 @@ async function createProject(userId, data) {
       status: data.status || "idea",
       order: count + 1,
       tags: data.tags || [],
+      isPublic: Boolean(data.isPublic),
+      coverUrl: data.coverUrl || null,
       ownerId: userId,
       members: {
         create: {
           inviteEmail: data.ownerEmail || "owner",
           role: "owner",
+          roleLabel: data.ownerRoleLabel || "Criador",
           status: "accepted",
           invitedById: userId,
           userId,
@@ -110,6 +126,16 @@ async function createProject(userId, data) {
       changedBy: userId,
     },
   });
+
+  if (project.isPublic) {
+    await prisma.socialPost.create({
+      data: {
+        authorId: userId,
+        content: "Projeto publicado",
+        projectId: project.id,
+      },
+    });
+  }
 
   return project;
 }
@@ -128,6 +154,12 @@ async function updateProject(userId, projectId, data) {
     throw error;
   }
 
+  if (data.isPublic && !data.coverUrl && !project.coverUrl) {
+    const error = new Error("Projetos públicos precisam de capa");
+    error.status = 400;
+    throw error;
+  }
+
   const updated = await prisma.project.update({
     where: { id: projectId },
     data: {
@@ -136,6 +168,8 @@ async function updateProject(userId, projectId, data) {
       status: data.status ?? project.status,
       tags: data.tags ?? project.tags,
       order: Number.isInteger(data.order) ? data.order : project.order,
+      isPublic: data.isPublic ?? project.isPublic,
+      coverUrl: data.coverUrl ?? project.coverUrl,
     },
   });
 
@@ -165,6 +199,21 @@ async function updateProject(userId, projectId, data) {
           })
         )
     );
+  }
+
+  if (data.isPublic === true && !project.isPublic) {
+    const existingPost = await prisma.socialPost.findFirst({
+      where: { projectId, authorId: userId, content: "Projeto publicado" },
+    });
+    if (!existingPost) {
+      await prisma.socialPost.create({
+        data: {
+          authorId: userId,
+          content: "Projeto publicado",
+          projectId,
+        },
+      });
+    }
   }
 
   return updated;
@@ -258,13 +307,18 @@ async function listStatusHistory(userId, projectId) {
   });
 }
 
-async function invitePartner(userId, projectId, { email, username, role }) {
+async function invitePartner(userId, projectId, { email, username, role, roleLabel }) {
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project || project.ownerId !== userId) {
     const error = new Error("Sem permissão para convidar parceiros");
     error.status = 403;
     throw error;
   }
+
+  const inviter = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, username: true },
+  });
 
   const user = await prisma.user.findFirst({
     where: {
@@ -278,7 +332,8 @@ async function invitePartner(userId, projectId, { email, username, role }) {
       userId: user?.id,
       inviteEmail: email || user?.email || "convidado",
       role: role || "viewer",
-      status: user ? "accepted" : "pending",
+      roleLabel: roleLabel || null,
+      status: "pending",
       invitedById: userId,
     },
   });
@@ -286,8 +341,9 @@ async function invitePartner(userId, projectId, { email, username, role }) {
   if (user) {
     await createNotification({
       userId: user.id,
-      type: "invite",
-      message: `Você foi convidado para o projeto ${project.name}`,
+      actorId: userId,
+      type: "project_invite",
+      message: `${inviter?.name || "Alguém"} convidou você para o projeto ${project.name}`,
       link: `/projects/${projectId}`,
     });
   }
@@ -295,7 +351,72 @@ async function invitePartner(userId, projectId, { email, username, role }) {
   return invite;
 }
 
-async function updatePartnerRole(userId, projectId, { memberId, role }) {
+async function listInvites(userId) {
+  return prisma.projectMember.findMany({
+    where: { userId, status: "pending" },
+    include: {
+      project: { select: { id: true, name: true, ownerId: true } },
+      invitedBy: { select: { id: true, name: true, username: true, avatarUrl: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+async function acceptInvite(userId, inviteId) {
+  const invite = await prisma.projectMember.findFirst({
+    where: { id: inviteId, userId, status: "pending" },
+    include: { project: true },
+  });
+  if (!invite) {
+    const error = new Error("Convite não encontrado");
+    error.status = 404;
+    throw error;
+  }
+
+  const updated = await prisma.projectMember.update({
+    where: { id: inviteId },
+    data: { status: "accepted" },
+  });
+
+  await createNotification({
+    userId: invite.project.ownerId,
+    actorId: userId,
+    type: "project_invite_accept",
+    message: `Convite aceito no projeto ${invite.project.name}`,
+    link: `/projects/${invite.project.id}`,
+  });
+
+  return updated;
+}
+
+async function declineInvite(userId, inviteId) {
+  const invite = await prisma.projectMember.findFirst({
+    where: { id: inviteId, userId, status: "pending" },
+    include: { project: true },
+  });
+  if (!invite) {
+    const error = new Error("Convite não encontrado");
+    error.status = 404;
+    throw error;
+  }
+
+  const updated = await prisma.projectMember.update({
+    where: { id: inviteId },
+    data: { status: "declined" },
+  });
+
+  await createNotification({
+    userId: invite.project.ownerId,
+    actorId: userId,
+    type: "project_invite_decline",
+    message: `Convite recusado no projeto ${invite.project.name}`,
+    link: `/projects/${invite.project.id}`,
+  });
+
+  return updated;
+}
+
+async function updatePartnerRole(userId, projectId, { memberId, role, roleLabel }) {
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project || project.ownerId !== userId) {
     const error = new Error("Sem permissão para atualizar parceiros");
@@ -305,7 +426,7 @@ async function updatePartnerRole(userId, projectId, { memberId, role }) {
 
   return prisma.projectMember.update({
     where: { id: memberId },
-    data: { role },
+    data: { role, roleLabel },
   });
 }
 
@@ -317,9 +438,21 @@ async function removePartner(userId, projectId, partnerUserId) {
     throw error;
   }
 
-  return prisma.projectMember.deleteMany({
+  const removed = await prisma.projectMember.deleteMany({
     where: { projectId, userId: partnerUserId },
   });
+
+  if (partnerUserId) {
+    await createNotification({
+      userId: partnerUserId,
+      actorId: userId,
+      type: "project_removed",
+      message: `Você foi removido do projeto ${project.name}`,
+      link: "/projects",
+    });
+  }
+
+  return removed;
 }
 
 module.exports = {
@@ -333,6 +466,9 @@ module.exports = {
   listStatusHistory,
   getProjectAudio,
   invitePartner,
+  listInvites,
+  acceptInvite,
+  declineInvite,
   updatePartnerRole,
   removePartner,
 };
