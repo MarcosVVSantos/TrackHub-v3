@@ -12,6 +12,11 @@ enum ThemePreference {
   dark
 }
 
+enum PlanTier {
+  free
+  premium
+}
+
 enum ProjectStatus {
   idea
   in_progress
@@ -104,6 +109,7 @@ model User {
   socialComments SocialPostComment[]
   eventsCreated ProjectEvent[] @relation("EventCreator")
   eventParticipations ProjectEventParticipant[]
+  subscription  Subscription?
 }
 
 model RefreshToken {
@@ -216,6 +222,32 @@ model ProjectStatusLog {
   createdAt  DateTime      @default(now())
 }
 
+model Plan {
+  id                         String   @id @default(cuid())
+  tier                       PlanTier @unique
+  maxProjects                Int
+  maxCollaboratorsPerProject Int
+  maxTracks                  Int
+  maxStorageBytes            BigInt
+  maxPlaylists               Int
+  createdAt                  DateTime @default(now())
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id])
+  status    String   @default("active")
+  startedAt DateTime @default(now())
+  endsAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model FileAsset {
   id         String       @id @default(cuid())
   projectId  String
@@ -226,6 +258,7 @@ model FileAsset {
   type       String
   url        String
   storageKey String
+  sizeBytes  BigInt       @default(0)
   createdAt  DateTime     @default(now())
 
   versions   FileVersion[]

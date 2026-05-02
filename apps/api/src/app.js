@@ -14,6 +14,7 @@ const followRoutes = require("./routes/follows");
 const profileRoutes = require("./routes/profiles");
 const calendarRoutes = require("./routes/calendar");
 const commentRoutes = require("./routes/comments");
+const subscriptionRoutes = require("./routes/subscriptions");
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use("/follows", followRoutes);
 app.use("/profiles", profileRoutes);
 app.use("/calendar", calendarRoutes);
 app.use("/comments", commentRoutes);
+app.use("/subscriptions", subscriptionRoutes);
 
 app.use(errorHandler);
 

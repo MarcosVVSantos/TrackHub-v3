@@ -11,6 +11,7 @@ import {
   UserCircle,
   Menu,
   X,
+  Zap,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -82,6 +83,10 @@ function Header() {
           <NavLink to="/feed" className={navLinkClass}>
             <Globe size={16} />
             Feed
+          </NavLink>
+          <NavLink to="/pricing" className={navLinkClass}>
+            <Zap size={16} />
+            Planos
           </NavLink>
           {user && (
             <>
@@ -246,6 +251,9 @@ function Header() {
           <nav className="flex flex-col gap-1 pt-2 text-sm text-gray-600 dark:text-brand-textMuted">
             <NavLink to="/feed" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-gray-50 dark:hover:bg-brand-darkOutline ${isActive ? "text-brand-primary font-medium" : ""}`} onClick={closeMobile}>
               <Globe size={18} /> Feed
+            </NavLink>
+            <NavLink to="/pricing" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-gray-50 dark:hover:bg-brand-darkOutline ${isActive ? "text-brand-primary font-medium" : ""}`} onClick={closeMobile}>
+              <Zap size={18} /> Planos
             </NavLink>
             {user ? (
               <>

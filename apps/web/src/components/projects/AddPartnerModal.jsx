@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, UserPlus, Loader2 } from "lucide-react";
 import { apiRequest, getAccessToken } from "../../api/client";
 
-function AddPartnerModal({ open, project, onClose }) {
+function AddPartnerModal({ open, project, onClose, onPlanError }) {
   const [form, setForm] = useState({ email: "", username: "", role: "viewer", roleLabel: "" });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -24,7 +24,12 @@ function AddPartnerModal({ open, project, onClose }) {
       });
       setMessage("Convite enviado com sucesso!");
     } catch (err) {
-      setError(err.message);
+      if (onPlanError && err.message.includes("plano Free")) {
+        onClose();
+        onPlanError(err.message);
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }

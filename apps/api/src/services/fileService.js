@@ -21,6 +21,7 @@ async function addProjectFile({ projectId, uploaderId, file, versionName }) {
       type: file.mimetype,
       url: file.url,
       storageKey: file.filename,
+      sizeBytes: BigInt(file.size ?? 0),
       versions: {
         create: {
           version: versionName || "v1",

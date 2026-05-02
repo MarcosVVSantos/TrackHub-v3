@@ -11,6 +11,8 @@ import ProjectCard from "../components/projects/ProjectCard";
 import AddPartnerModal from "../components/projects/AddPartnerModal";
 import EditProjectModal from "../components/projects/EditProjectModal";
 import ProjectHistoryDrawer from "../components/projects/ProjectHistoryDrawer";
+import UsageBanner from "../components/UsageBanner";
+import UpgradeModal from "../components/UpgradeModal";
 
 const statusLabels = {
   idea: "Ideia",
@@ -34,6 +36,7 @@ function Projects() {
   const { user } = useAuth();
   const [invites, setInvites] = useState([]);
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState("");
 
   async function loadProjects() {
     try {
@@ -190,6 +193,10 @@ function Projects() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
+      {upgradeMessage && (
+        <UpgradeModal message={upgradeMessage} onClose={() => setUpgradeMessage("")} />
+      )}
+      <UsageBanner />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold text-brand-primary">Projetos</h2>
@@ -359,6 +366,7 @@ function Projects() {
         onClose={() => setOpenModal(false)}
         onCreated={loadProjects}
         tagsSuggestions={availableTags}
+        onPlanError={setUpgradeMessage}
       />
       <EditProjectModal
         open={!!editProject}
@@ -371,6 +379,7 @@ function Projects() {
         open={!!partnerProject}
         project={partnerProject}
         onClose={() => setPartnerProject(null)}
+        onPlanError={setUpgradeMessage}
       />
       <ProjectHistoryDrawer
         open={!!historyProject}

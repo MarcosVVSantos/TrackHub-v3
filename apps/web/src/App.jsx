@@ -10,6 +10,7 @@ import Profile from "./pages/Profile";
 import Explore from "./pages/Explore";
 import Calendar from "./pages/Calendar";
 import Landing from "./pages/Landing";
+import Pricing from "./pages/Pricing";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Header from "./components/Header";
 import GlobalPlayer from "./components/GlobalPlayer";
@@ -81,6 +82,7 @@ function App() {
           }
         />
         <Route path="/feed" element={<Feed />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route
           path="/explore"
           element={

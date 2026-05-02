@@ -9,7 +9,7 @@ const statusOptions = [
   { value: "finished", label: "Finalizado" },
 ];
 
-function CreateProjectModal({ open, onClose, onCreated, tagsSuggestions }) {
+function CreateProjectModal({ open, onClose, onCreated, tagsSuggestions, onPlanError }) {
   const [form, setForm] = useState({ name: "", description: "", status: "idea", isPublic: false });
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState([]);
@@ -65,7 +65,12 @@ function CreateProjectModal({ open, onClose, onCreated, tagsSuggestions }) {
       onCreated();
       onClose();
     } catch (err) {
-      setError(err.message);
+      if (onPlanError && err.message.includes("plano Free")) {
+        onClose();
+        onPlanError(err.message);
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
