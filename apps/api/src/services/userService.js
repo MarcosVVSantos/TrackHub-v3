@@ -58,6 +58,21 @@ async function updateMe(userId, data) {
     throw error;
   }
 
+  if (payload.name && payload.name.length > 60) {
+    const error = new Error("O nome deve ter no máximo 60 caracteres");
+    error.status = 400;
+    throw error;
+  }
+  if (payload.username && !/^[a-zA-Z0-9_.]{3,30}$/.test(payload.username)) {
+    const error = new Error("Username com 3 a 30 caracteres: letras, números, ponto e underline");
+    error.status = 400;
+    throw error;
+  }
+  if (payload.bio != null && typeof payload.bio !== "string") {
+    const error = new Error("Bio inválida");
+    error.status = 400;
+    throw error;
+  }
   if (payload.username && payload.username.length < 3) {
     const error = new Error("O username deve ter pelo menos 3 caracteres");
     error.status = 400;

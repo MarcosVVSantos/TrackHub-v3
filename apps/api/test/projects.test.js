@@ -117,11 +117,12 @@ test("GET /projects/:id/history returns status history", async () => {
   assert.ok(Array.isArray(response.body));
 });
 
-test("GET /projects/:id/audio streams latest audio", async () => {
+// Desde março a API não serve o áudio: ela redireciona para o arquivo no R2.
+test("GET /projects/:id/audio redirects to the latest audio file", async () => {
   const response = await request(app)
     .get(`/projects/${project.id}/audio`)
     .set("Authorization", `Bearer ${token}`);
 
-  assert.strictEqual(response.statusCode, 200);
-  assert.strictEqual(response.headers["content-type"], "audio/mpeg");
+  assert.strictEqual(response.statusCode, 302);
+  assert.strictEqual(response.headers.location, audioFile.url);
 });

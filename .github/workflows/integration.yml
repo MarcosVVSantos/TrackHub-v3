@@ -1,0 +1,76 @@
+# Testes de integração: rodam a API inteira contra um Postgres de verdade.
+# Rodam sozinhos em todo pull request (e também dá para rodar na mão em Actions).
+# Não rodam no push direto na main, então não bloqueiam o deploy do Render
+# enquanto os testes antigos estão sendo estabilizados.
+# Quando passarem de forma estável, adicione "push: branches: [main]" para torná-los obrigatórios.
+name: Integration tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: API (integração com banco)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: trackhub
+          POSTGRES_PASSWORD: trackhub
+          POSTGRES_DB: trackhub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trackhub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://trackhub:trackhub@localhost:5432/trackhub_test
+      JWT_ACCESS_SECRET: ci-access-secret
+      JWT_REFRESH_SECRET: ci-refresh-secret
+      # Nada vai para o R2 de verdade nos testes.
+      STORAGE_DRIVER: memory
+      R2_PUBLIC_URL: https://cdn.test
+      RATE_LIMIT_DISABLED: "true"
+      LOG_LEVEL: error
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      # Alguns testes antigos ainda escrevem arquivos em apps/api/uploads (pasta fora do Git).
+      - name: Criar pasta de uploads
+        run: mkdir -p apps/api/uploads
+
+      - name: Criar o banco a partir das migrations
+        run: npx prisma migrate deploy
+        working-directory: apps/api
+
+      # migrate deploy cria as tabelas, mas não gera o código do Prisma Client.
+      - name: Gerar o Prisma Client
+        run: npx prisma generate
+        working-directory: apps/api
+
+      - name: Testes de integração
+        run: npm run test:integration
+        working-directory: apps/api

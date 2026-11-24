@@ -1,18 +1,17 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { apiRequest, getAccessToken } from "../api/client";
+import { createContext, useContext, useEffect, useState } from "react";
+import { apiRequest } from "../api/client";
 import { useAuth } from "./AuthContext";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+import { useSocket } from "./SocketContext";
 
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
   const { user } = useAuth();
+  const { on } = useSocket();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const wsRef = useRef(null);
 
   async function loadNotifications() {
     if (!user) return;
@@ -41,38 +40,18 @@ export function NotificationProvider({ children }) {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
       return;
     }
-
     loadNotifications();
-
-    const token = getAccessToken();
-    if (!token) return;
-
-    const wsUrl = API_URL.replace(/^https/, "wss").replace(/^http/, "ws");
-    const ws = new WebSocket(`${wsUrl}/ws?token=${token}`);
-    wsRef.current = ws;
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "notification") {
-          setNotifications((prev) => [msg.data, ...prev]);
-          setUnreadCount((prev) => prev + 1);
-        }
-      } catch {}
-    };
-
-    ws.onerror = () => {};
-
-    return () => {
-      ws.close();
-    };
   }, [user]);
+
+  useEffect(() => {
+    const unsubscribe = on("notification", (data) => {
+      setNotifications((prev) => [data, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+    });
+    return unsubscribe;
+  }, [on]);
 
   return (
     <NotificationContext.Provider

@@ -1,4 +1,6 @@
 const prisma = require("../lib/prisma");
+const { PUBLIC_USER_SELECT } = require("../utils/publicUser");
+const { withResolvedUrls } = require("./storageService");
 
 async function resolveUser(identifier) {
   return prisma.user.findFirst({
@@ -93,7 +95,10 @@ async function listPublicProjects(identifier, viewerId) {
         take: 1,
         select: { id: true, url: true, name: true, type: true },
       },
-      members: { where: { status: "accepted" }, include: { user: true } },
+      members: {
+        where: { status: "accepted" },
+        select: { id: true, role: true, roleLabel: true, user: { select: PUBLIC_USER_SELECT } },
+      },
       socialPosts: {
         take: 1,
         orderBy: { createdAt: "desc" },
@@ -107,7 +112,11 @@ async function listPublicProjects(identifier, viewerId) {
     orderBy: { updatedAt: "desc" },
   });
 
-  return projects.map((project) => {
+  const withUrls = await Promise.all(
+    projects.map(async (project) => ({ ...project, files: await withResolvedUrls(project.files) }))
+  );
+
+  return withUrls.map((project) => {
     const post = project.socialPosts[0];
     return {
       ...project,
@@ -126,17 +135,24 @@ async function listPosts(identifier) {
     error.status = 404;
     throw error;
   }
-  return prisma.socialPost.findMany({
+  const posts = await prisma.socialPost.findMany({
     where: { authorId: user.id },
     include: {
       author: { select: { id: true, name: true, username: true, avatarUrl: true } },
-      project: { select: { id: true, name: true } },
-      track: { select: { id: true, title: true } },
-      playlist: { select: { id: true, name: true } },
+      project: { select: { id: true, name: true, isPublic: true } },
+      track: { select: { id: true, title: true, isPublic: true } },
+      playlist: { select: { id: true, name: true, isPublic: true } },
       _count: { select: { likes: true, comments: true, saves: true } },
     },
     orderBy: { createdAt: "desc" },
   });
+
+  return posts.map((post) => ({
+    ...post,
+    project: post.project?.isPublic === false ? null : post.project,
+    track: post.track?.isPublic === false ? null : post.track,
+    playlist: post.playlist?.isPublic === false ? null : post.playlist,
+  }));
 }
 
 async function listPlaylists(identifier, viewerId) {
@@ -151,6 +167,7 @@ async function listPlaylists(identifier, viewerId) {
     include: {
       creator: { select: { id: true, name: true, username: true, avatarUrl: true } },
       tracks: {
+        where: { track: { isPublic: true } },
         include: { track: { select: { id: true, title: true, audioUrl: true, coverUrl: true } } },
         orderBy: { order: "asc" },
       },

@@ -1,12 +1,23 @@
 const prisma = require("../lib/prisma");
 const { createNotification } = require("./notificationService");
-const { ensureProjectMember } = require("./accessService");
+const { ensureProjectMember, httpError } = require("./accessService");
+const { PUBLIC_USER_SELECT } = require("../utils/publicUser");
+
+const MAX_COMMENT_LENGTH = 1000;
+
+function validateContent(content) {
+  if (typeof content !== "string" || !content.trim()) throw httpError(400, "Escreva um comentário");
+  if (content.trim().length > MAX_COMMENT_LENGTH) {
+    throw httpError(400, `Comentário com no máximo ${MAX_COMMENT_LENGTH} caracteres`);
+  }
+  return content.trim();
+}
 
 async function listProjectComments(userId, projectId) {
   await ensureProjectMember(userId, projectId);
   return prisma.projectComment.findMany({
     where: { projectId },
-    include: { user: true },
+    include: { user: { select: PUBLIC_USER_SELECT } },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -14,7 +25,8 @@ async function listProjectComments(userId, projectId) {
 async function addProjectComment(userId, projectId, content) {
   await ensureProjectMember(userId, projectId);
   const comment = await prisma.projectComment.create({
-    data: { userId, projectId, content },
+    data: { userId, projectId, content: validateContent(content) },
+    include: { user: { select: PUBLIC_USER_SELECT } },
   });
 
   const project = await prisma.project.findUnique({ where: { id: projectId } });
@@ -40,7 +52,7 @@ async function updateComment(userId, commentId, content) {
     }
     return prisma.trackComment.update({
       where: { id: commentId },
-      data: { content },
+      data: { content: validateContent(content) },
     });
   }
 
@@ -53,7 +65,7 @@ async function updateComment(userId, commentId, content) {
     }
     return prisma.socialPostComment.update({
       where: { id: commentId },
-      data: { content },
+      data: { content: validateContent(content) },
     });
   }
 
@@ -91,6 +103,7 @@ async function deleteComment(userId, commentId) {
 }
 
 module.exports = {
+  validateContent,
   listProjectComments,
   addProjectComment,
   updateComment,

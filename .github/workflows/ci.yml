@@ -1,0 +1,92 @@
+# CI do TrackHub: roda a cada push e pull request.
+# O Render só publica a API quando todos estes checks passam
+# (Settings → Auto-Deploy → "After CI Checks Pass").
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Se você der dois pushes seguidos, o CI do primeiro é cancelado.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API (schema e testes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Postgres temporário, apagado ao fim do job. Serve para conferir as migrations.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: trackhub
+          POSTGRES_PASSWORD: trackhub
+          POSTGRES_DB: trackhub_shadow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trackhub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://trackhub:trackhub@localhost:5432/trackhub_shadow
+      SHADOW_DATABASE_URL: postgresql://trackhub:trackhub@localhost:5432/trackhub_shadow
+      LOG_LEVEL: error
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Validar o schema do Prisma
+        run: npx prisma validate
+        working-directory: apps/api
+
+      # Falha se alguém mudou o schema.prisma sem criar a migration correspondente
+      # (foi o que deixou o chat sem migration e causou o reset do banco local).
+      - name: Conferir se schema e migrations batem
+        run: npm run db:check-drift
+        working-directory: apps/api
+
+      - name: Gerar o Prisma Client
+        run: npx prisma generate
+        working-directory: apps/api
+
+      - name: Testes (segurança, observabilidade, planos)
+        run: npm run test:unit
+        working-directory: apps/api
+
+  web:
+    name: Front (build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build do front
+        run: npm run build -w apps/web

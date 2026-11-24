@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiRequest, getAccessToken, API_URL } from "../api/client";
 import Skeleton from "../components/Skeleton";
+import { track } from "../lib/analytics";
 import { MessageSquare, UploadCloud, CheckCircle, ArrowLeft, Calendar, Lock, Globe } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -76,8 +77,13 @@ function ProjectDetail() {
       const errorData = await response.json().catch(() => ({ message: "Erro no upload" }));
       setError(errorData.message);
       setUploading(false);
+      if (errorData.code === "PLAN_LIMIT_REACHED") {
+        track("limite_do_plano_atingido", errorData.details);
+      }
       return;
     }
+
+    track("arquivo_enviado", { tipo: selectedFile.type, versao: normalizedVersion });
 
     setFile(null);
     setVersion(normalizedVersion);

@@ -59,7 +59,8 @@ test("PUT /users/me updates profile", async () => {
 });
 
 test("POST /users/avatar uploads avatar", async () => {
-  const buffer = Buffer.from("avatar");
+  // Precisa ser um PNG de verdade: a API confere os primeiros bytes do arquivo.
+  const buffer = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)]);
   const response = await request(app)
     .post("/users/avatar")
     .set("Authorization", `Bearer ${token}`)

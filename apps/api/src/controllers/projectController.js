@@ -3,6 +3,7 @@ const commentService = require("../services/commentService");
 const fileService = require("../services/fileService");
 const taskService = require("../services/taskService");
 const storage = require("../services/storageService");
+const { validateImage, validateProjectFile } = require("../utils/fileType");
 
 async function listProjects(req, res, next) {
   try {
@@ -11,7 +12,10 @@ async function listProjects(req, res, next) {
       ? req.query.status.split(",").map((value) => value.trim()).filter(Boolean)
       : [];
     const projects = await projectService.listProjects(req.user.sub, { tags, status });
-    res.json(projects);
+    const withUrls = await Promise.all(
+      projects.map(async (project) => ({ ...project, files: await storage.withResolvedUrls(project.files) }))
+    );
+    res.json(withUrls);
   } catch (error) {
     next(error);
   }
@@ -20,7 +24,10 @@ async function listProjects(req, res, next) {
 async function getProject(req, res, next) {
   try {
     const project = await projectService.getProject(req.user.sub, req.params.id);
-    res.json(project);
+    if (!project) {
+      return res.status(404).json({ message: "Projeto não encontrado" });
+    }
+    return res.json({ ...project, files: await storage.withResolvedUrls(project.files) });
   } catch (error) {
     next(error);
   }
@@ -83,7 +90,8 @@ async function statusHistory(req, res, next) {
 async function streamAudio(req, res, next) {
   try {
     const file = await projectService.getProjectAudio(req.user.sub, req.params.id);
-    return res.redirect(file.url);
+    res.set("Cache-Control", "no-store");
+    return res.redirect(await storage.resolveFileUrl(file.url));
   } catch (error) {
     next(error);
   }
@@ -172,11 +180,19 @@ async function listFiles(req, res, next) {
 
 async function addFile(req, res, next) {
   try {
-    const { url, key } = await storage.uploadFile(req.file.buffer, req.file.originalname, req.file.mimetype);
+    // Tipo real detectado pelos bytes do arquivo; o que o navegador diz é ignorado.
+    const type = validateProjectFile(req.file);
+    const { url, key } = await storage.uploadFile(req.file.buffer, {
+      mime: type.mime,
+      ext: type.ext,
+      download: type.download,
+      visibility: "private",
+      filename: req.file.originalname,
+    });
     const file = await fileService.addProjectFile({
       projectId: req.params.id,
       uploaderId: req.user.sub,
-      file: { ...req.file, url, filename: key },
+      file: { ...req.file, mimetype: type.mime, url, filename: key },
       versionName: req.body.version,
     });
     res.status(201).json(file);
@@ -187,7 +203,8 @@ async function addFile(req, res, next) {
 
 async function uploadCover(req, res, next) {
   try {
-    const { url } = await storage.uploadFile(req.file.buffer, req.file.originalname, req.file.mimetype);
+    const type = validateImage(req.file);
+    const { url } = await storage.uploadFile(req.file.buffer, { mime: type.mime, ext: type.ext });
     const project = await projectService.updateProject(req.user.sub, req.params.id, { coverUrl: url });
     res.json({ coverUrl: project.coverUrl });
   } catch (error) {

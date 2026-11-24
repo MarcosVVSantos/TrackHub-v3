@@ -13,15 +13,16 @@ import {
   Send,
   UserPlus,
   Check,
+  ListMusic,
 } from "lucide-react";
 import { API_URL, apiRequest } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { usePlayer } from "../context/PlayerContext";
 import Skeleton from "../components/Skeleton";
+import CreatePlaylistModal from "../components/playlists/CreatePlaylistModal";
 
 const TABS = [
   { id: "productions", label: "Feed" },
-  { id: "social", label: "Social" },
   { id: "playlists", label: "Playlists" },
 ];
 
@@ -82,6 +83,7 @@ function Feed() {
   const [playlistProgress, setPlaylistProgress] = useState(0);
   const [playlistDuration, setPlaylistDuration] = useState(0);
   const [showPostModal, setShowPostModal] = useState(false);
+  const [openCreatePlaylist, setOpenCreatePlaylist] = useState(false);
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentMenuId, setCommentMenuId] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
@@ -102,19 +104,18 @@ function Feed() {
     try {
       setLoading(true);
       setError("");
-      if (tabId === "social") {
-        const data = await apiRequest("/feed/social");
-        setSocialPosts(data);
-      } else if (tabId === "playlists") {
+      if (tabId === "playlists") {
         const data = await apiRequest("/feed/playlists");
         setPlaylists(data);
       } else {
-        const [trackData, projectData] = await Promise.all([
+        const [trackData, projectData, socialData] = await Promise.all([
           apiRequest("/feed/productions"),
           apiRequest("/feed/projects"),
+          apiRequest("/feed/social"),
         ]);
         setProductions(trackData);
         setProjectPosts(projectData);
+        setSocialPosts(socialData);
       }
     } catch (err) {
       setError(err.message);
@@ -277,7 +278,7 @@ function Feed() {
     if (!user) return;
     await apiRequest("/feed/social", { method: "POST", body: payload });
     setShowPostModal(false);
-    loadTab("social");
+    loadTab("productions");
   }
 
   async function handleLikePost(postId) {
@@ -306,7 +307,7 @@ function Feed() {
     } else {
       await apiRequest(`/feed/social/${post.id}/save`, { method: "POST" });
     }
-    loadTab("social");
+    loadTab("productions");
   }
 
   async function handleCommentPost(postId, content) {
@@ -568,7 +569,7 @@ function Feed() {
           <Link className="btn-secondary" to="/explore">
             Explorar artistas
           </Link>
-          {activeTab === "social" && (
+          {activeTab === "productions" && (
             <button className="btn-primary w-fit" onClick={() => setShowPostModal(true)}>
               <Plus size={16} />
               Criar post
@@ -622,7 +623,7 @@ function Feed() {
             </div>
           )}
 
-          {productions.length === 0 && projectPosts.length === 0 ? (
+          {productions.length === 0 && projectPosts.length === 0 && socialPosts.length === 0 ? (
             <EmptyState
               title="Seu feed está vazio"
               description="Siga artistas para ver as produções mais recentes por aqui."
@@ -630,6 +631,158 @@ function Feed() {
             />
           ) : (
             <>
+              {socialPosts.map((post) => (
+                <div key={post.id} className="card space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar user={post.author} />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-brand-text">
+                        {post.author?.name}
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-brand-textMuted">
+                        @{post.author?.username} · {formatRelativeTime(post.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-brand-textMuted">{post.content}</p>
+                  <PostReference post={post} />
+                  <div className="flex flex-wrap gap-3">
+                    <button className="btn-secondary" onClick={() => handleLikePost(post.id)}>
+                      <Heart size={16} className={post.liked ? "fill-rose-500 text-rose-500" : ""} />
+                      Curtir ({post._count?.likes || 0})
+                    </button>
+                    <button className="btn-secondary" onClick={() => toggleComments(post.id)}>
+                      <MessageCircle size={16} />
+                      Comentários ({post._count?.comments || 0})
+                    </button>
+                    <button className="btn-secondary" onClick={() => handleSavePost(post)}>
+                      <Bookmark size={16} />
+                      {post.saved ? "Salvo" : "Salvar"}
+                    </button>
+                  </div>
+                  {commentsByPost[post.id]?.open && (
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-brand-darkOutline dark:bg-brand-darkOutline/60">
+                      {commentsByPost[post.id]?.loading && (
+                        <div className="text-xs text-gray-400 dark:text-brand-textMuted">Carregando comentários...</div>
+                      )}
+                      {commentsByPost[post.id]?.error && (
+                        <div className="text-xs text-rose-500">{commentsByPost[post.id].error}</div>
+                      )}
+                      {!commentsByPost[post.id]?.loading &&
+                        (!commentsByPost[post.id]?.items || commentsByPost[post.id].items.length === 0) && (
+                          <p className="text-xs text-gray-500 dark:text-brand-textMuted">
+                            Nenhum comentário ainda. Seja o primeiro.
+                          </p>
+                        )}
+                      <div className="mt-3 space-y-3">
+                        {(commentsByPost[post.id]?.items || []).map((comment) => {
+                          const isAuthor = comment.user?.id === user?.id;
+                          const isEditing = editingComment?.id === comment.id;
+                          return (
+                            <div
+                              key={comment.id}
+                              className={`group flex gap-3 rounded-lg p-2 transition ${
+                                removingCommentId === comment.id ? "opacity-50" : "opacity-100"
+                              }`}
+                            >
+                              <Avatar user={comment.user} />
+                              <div className="flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-700 dark:text-brand-text">
+                                      @{comment.user?.username}
+                                    </p>
+                                    {isEditing ? (
+                                      <div className="mt-1 space-y-2">
+                                        <input
+                                          className="input"
+                                          value={commentDraft}
+                                          onChange={(event) => setCommentDraft(event.target.value)}
+                                        />
+                                        <div className="flex gap-2">
+                                          <button className="btn-secondary" type="button" onClick={cancelEditComment}>
+                                            Cancelar
+                                          </button>
+                                          <button
+                                            className="btn-primary"
+                                            type="button"
+                                            onClick={() => handleUpdateComment(post.id, comment.id)}
+                                          >
+                                            Salvar
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <p className="text-sm text-gray-600 dark:text-brand-textMuted">
+                                        {comment.content}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {isAuthor && !isEditing && (
+                                    <div className="relative">
+                                      <button
+                                        className="rounded-full p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 group-hover:opacity-100 dark:text-brand-textMuted dark:hover:bg-brand-darkOutline"
+                                        onClick={() =>
+                                          setCommentMenuId((prev) => (prev === comment.id ? null : comment.id))
+                                        }
+                                      >
+                                        <span className="text-lg">⋯</span>
+                                      </button>
+                                      {commentMenuId === comment.id && (
+                                        <div className="absolute right-0 mt-1 w-28 rounded-lg border border-gray-100 bg-white p-1 shadow-md dark:border-brand-darkOutline dark:bg-brand-darkSecondary">
+                                          <button
+                                            className="w-full rounded-md px-2 py-1 text-left text-xs hover:bg-gray-50 dark:hover:bg-brand-darkOutline"
+                                            onClick={() => startEditComment(post.id, comment)}
+                                          >
+                                            Editar
+                                          </button>
+                                          <button
+                                            className="w-full rounded-md px-2 py-1 text-left text-xs text-rose-500 hover:bg-rose-50"
+                                            onClick={() => setConfirmDeleteId(comment.id)}
+                                          >
+                                            Excluir
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                {!isEditing && (
+                                  <p className="mt-1 text-xs text-gray-400 dark:text-brand-textMuted">
+                                    {formatRelativeTime(comment.createdAt)}
+                                  </p>
+                                )}
+                                {confirmDeleteId === comment.id && (
+                                  <div className="mt-2 flex items-center gap-2 text-xs">
+                                    <span className="text-gray-500 dark:text-brand-textMuted">Excluir comentário?</span>
+                                    <button className="btn-secondary" type="button" onClick={() => setConfirmDeleteId(null)}>
+                                      Cancelar
+                                    </button>
+                                    <button
+                                      className="btn-primary"
+                                      type="button"
+                                      onClick={() => handleDeleteComment(post.id, comment.id)}
+                                    >
+                                      Excluir
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-4">
+                        <CommentComposer
+                          onSubmit={(content) => handleCommentPost(post.id, content)}
+                          placeholder="Escreva um comentário..."
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
               {projectPosts.map((post) => (
                 <div key={post.id} className="card space-y-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -770,180 +923,18 @@ function Feed() {
         </div>
       )}
 
-      {!loading && activeTab === "social" && (
-        <div className="space-y-4">
-          {socialPosts.length === 0 ? (
-            <EmptyState
-              title="Nenhuma interação ainda"
-              description="Crie um post ou siga artistas para ver os bastidores criativos."
-              cta={{ label: "Explorar artistas", href: "/explore" }}
-            />
-          ) : (
-            socialPosts.map((post) => (
-              <div key={post.id} className="card space-y-3">
-                <div className="flex items-center gap-3">
-                  <Avatar user={post.author} />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-brand-text">
-                      {post.author?.name}
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-brand-textMuted">
-                      @{post.author?.username} · {formatRelativeTime(post.createdAt)}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-brand-textMuted">{post.content}</p>
-                <PostReference post={post} />
-                <div className="flex flex-wrap gap-3">
-                  <button className="btn-secondary" onClick={() => handleLikePost(post.id)}>
-                    <Heart size={16} className={post.liked ? "fill-rose-500 text-rose-500" : ""} />
-                    Curtir ({post._count?.likes || 0})
-                  </button>
-                  <button className="btn-secondary" onClick={() => toggleComments(post.id)}>
-                    <MessageCircle size={16} />
-                    Comentários ({post._count?.comments || 0})
-                  </button>
-                  <button className="btn-secondary" onClick={() => handleSavePost(post)}>
-                    <Bookmark size={16} />
-                    {post.saved ? "Salvo" : "Salvar"}
-                  </button>
-                </div>
-                {commentsByPost[post.id]?.open && (
-                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-brand-darkOutline dark:bg-brand-darkOutline/60">
-                    {commentsByPost[post.id]?.loading && (
-                      <div className="text-xs text-gray-400 dark:text-brand-textMuted">Carregando comentários...</div>
-                    )}
-                    {commentsByPost[post.id]?.error && (
-                      <div className="text-xs text-rose-500">{commentsByPost[post.id].error}</div>
-                    )}
-                    {!commentsByPost[post.id]?.loading &&
-                      (!commentsByPost[post.id]?.items || commentsByPost[post.id].items.length === 0) && (
-                        <p className="text-xs text-gray-500 dark:text-brand-textMuted">
-                          Nenhum comentário ainda. Seja o primeiro.
-                        </p>
-                      )}
-                    <div className="mt-3 space-y-3">
-                      {(commentsByPost[post.id]?.items || []).map((comment) => {
-                        const isAuthor = comment.user?.id === user?.id;
-                        const isEditing = editingComment?.id === comment.id;
-                        return (
-                          <div
-                            key={comment.id}
-                            className={`group flex gap-3 rounded-lg p-2 transition ${
-                              removingCommentId === comment.id ? "opacity-50" : "opacity-100"
-                            }`}
-                          >
-                            <Avatar user={comment.user} />
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-700 dark:text-brand-text">
-                                    @{comment.user?.username}
-                                  </p>
-                                  {isEditing ? (
-                                    <div className="mt-1 space-y-2">
-                                      <input
-                                        className="input"
-                                        value={commentDraft}
-                                        onChange={(event) => setCommentDraft(event.target.value)}
-                                      />
-                                      <div className="flex gap-2">
-                                        <button
-                                          className="btn-secondary"
-                                          type="button"
-                                          onClick={cancelEditComment}
-                                        >
-                                          Cancelar
-                                        </button>
-                                        <button
-                                          className="btn-primary"
-                                          type="button"
-                                          onClick={() => handleUpdateComment(post.id, comment.id)}
-                                        >
-                                          Salvar
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-gray-600 dark:text-brand-textMuted">
-                                      {comment.content}
-                                    </p>
-                                  )}
-                                </div>
-                                {isAuthor && !isEditing && (
-                                  <div className="relative">
-                                    <button
-                                      className="rounded-full p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 group-hover:opacity-100 dark:text-brand-textMuted dark:hover:bg-brand-darkOutline"
-                                      onClick={() =>
-                                        setCommentMenuId((prev) => (prev === comment.id ? null : comment.id))
-                                      }
-                                    >
-                                      <span className="text-lg">⋯</span>
-                                    </button>
-                                    {commentMenuId === comment.id && (
-                                      <div className="absolute right-0 mt-1 w-28 rounded-lg border border-gray-100 bg-white p-1 shadow-md dark:border-brand-darkOutline dark:bg-brand-darkSecondary">
-                                        <button
-                                          className="w-full rounded-md px-2 py-1 text-left text-xs hover:bg-gray-50 dark:hover:bg-brand-darkOutline"
-                                          onClick={() => startEditComment(post.id, comment)}
-                                        >
-                                          Editar
-                                        </button>
-                                        <button
-                                          className="w-full rounded-md px-2 py-1 text-left text-xs text-rose-500 hover:bg-rose-50"
-                                          onClick={() => setConfirmDeleteId(comment.id)}
-                                        >
-                                          Excluir
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                              {!isEditing && (
-                                <p className="mt-1 text-xs text-gray-400 dark:text-brand-textMuted">
-                                  {formatRelativeTime(comment.createdAt)}
-                                </p>
-                              )}
-                              {confirmDeleteId === comment.id && (
-                                <div className="mt-2 flex items-center gap-2 text-xs">
-                                  <span className="text-gray-500 dark:text-brand-textMuted">Excluir comentário?</span>
-                                  <button
-                                    className="btn-secondary"
-                                    type="button"
-                                    onClick={() => setConfirmDeleteId(null)}
-                                  >
-                                    Cancelar
-                                  </button>
-                                  <button
-                                    className="btn-primary"
-                                    type="button"
-                                    onClick={() => handleDeleteComment(post.id, comment.id)}
-                                  >
-                                    Excluir
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="mt-4">
-                      <CommentComposer
-                        onSubmit={(content) => handleCommentPost(post.id, content)}
-                        placeholder="Escreva um comentário..."
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
       {!loading && activeTab === "playlists" && (
         <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Link to="/playlists" className="flex items-center gap-2 text-sm text-brand-primary hover:underline">
+              <ListMusic size={15} />
+              Minhas playlists
+            </Link>
+            <button className="btn-primary text-sm" onClick={() => setOpenCreatePlaylist(true)}>
+              <Plus size={14} />
+              Nova playlist
+            </button>
+          </div>
           {playlistPlaying && (
             <div className="card sticky top-24 z-10 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-3">
@@ -1014,6 +1005,12 @@ function Feed() {
       {showPostModal && (
         <CreatePostModal onClose={() => setShowPostModal(false)} onSubmit={handleCreatePost} />
       )}
+
+      <CreatePlaylistModal
+        open={openCreatePlaylist}
+        onClose={() => setOpenCreatePlaylist(false)}
+        onCreated={() => loadTab("playlists")}
+      />
     </div>
   );
 }

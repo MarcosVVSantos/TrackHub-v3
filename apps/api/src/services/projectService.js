@@ -1,6 +1,20 @@
 const prisma = require("../lib/prisma");
 const { createNotification } = require("./notificationService");
-const { ensureProjectMember } = require("./accessService");
+const { ensureProjectMember, ASSIGNABLE_ROLES, httpError } = require("./accessService");
+const { PUBLIC_USER_SELECT } = require("../utils/publicUser");
+const { parseProjectInput } = require("../utils/projectInput");
+
+const MEMBER_SELECT = {
+  id: true,
+  userId: true,
+  role: true,
+  roleLabel: true,
+  status: true,
+  inviteEmail: true,
+  calendarShareStatus: true,
+  createdAt: true,
+  user: { select: PUBLIC_USER_SELECT },
+};
 
 async function listProjects(userId, { tags, status } = {}) {
   const statusFilter = status?.length ? { in: status } : undefined;
@@ -21,7 +35,7 @@ async function listProjects(userId, { tags, status } = {}) {
   return prisma.project.findMany({
     where,
     include: {
-      members: true,
+      members: { select: MEMBER_SELECT },
       tasks: true,
       events: {
         orderBy: { startsAt: "asc" },
@@ -67,21 +81,25 @@ async function getProject(userId, projectId) {
       ],
     },
     include: {
-      members: { include: { user: true } },
+      members: { select: MEMBER_SELECT },
       tasks: true,
-      comments: { include: { user: true } },
+      comments: { include: { user: { select: PUBLIC_USER_SELECT } } },
       statusLog: true,
-      files: { include: { versions: true } },
+      files: { include: { versions: true, uploader: { select: PUBLIC_USER_SELECT } } },
       tracks: true,
       events: {
-        include: { participants: { include: { user: true } }, createdBy: true },
+        include: {
+          participants: { include: { user: { select: PUBLIC_USER_SELECT } } },
+          createdBy: { select: PUBLIC_USER_SELECT },
+        },
         orderBy: { startsAt: "asc" },
       },
     },
   });
 }
 
-async function createProject(userId, data) {
+async function createProject(userId, rawData) {
+  const data = parseProjectInput(rawData);
   if (data.isPublic && !data.coverUrl) {
     const error = new Error("Projetos públicos precisam de capa");
     error.status = 400;
@@ -107,9 +125,9 @@ async function createProject(userId, data) {
       ownerId: userId,
       members: {
         create: {
-          inviteEmail: data.ownerEmail || "owner",
+          inviteEmail: "owner",
           role: "owner",
-          roleLabel: data.ownerRoleLabel || "Criador",
+          roleLabel: typeof rawData.ownerRoleLabel === "string" ? rawData.ownerRoleLabel.slice(0, 60) : "Criador",
           status: "accepted",
           invitedById: userId,
           userId,
@@ -140,7 +158,8 @@ async function createProject(userId, data) {
   return project;
 }
 
-async function updateProject(userId, projectId, data) {
+async function updateProject(userId, projectId, rawData) {
+  const data = parseProjectInput(rawData, { partial: true });
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) {
     const error = new Error("Projeto não encontrado");
@@ -315,6 +334,11 @@ async function invitePartner(userId, projectId, { email, username, role, roleLab
     throw error;
   }
 
+  const inviteRole = role || "editor";
+  if (!ASSIGNABLE_ROLES.includes(inviteRole)) throw httpError(400, "Papel inválido");
+  if (!email && !username) throw httpError(400, "Informe o email ou username do parceiro");
+  if (typeof roleLabel === "string" && roleLabel.length > 60) throw httpError(400, "Função com no máximo 60 caracteres");
+
   const inviter = await prisma.user.findUnique({
     where: { id: userId },
     select: { name: true, username: true },
@@ -326,12 +350,23 @@ async function invitePartner(userId, projectId, { email, username, role, roleLab
     },
   });
 
+  if (user?.id === userId) throw httpError(400, "Você já é o dono do projeto");
+
+  const existingInvite = await prisma.projectMember.findFirst({
+    where: {
+      projectId,
+      status: { in: ["pending", "accepted"] },
+      OR: [user?.id ? { userId: user.id } : null, email ? { inviteEmail: email } : null].filter(Boolean),
+    },
+  });
+  if (existingInvite) throw httpError(409, "Essa pessoa já foi convidada para o projeto");
+
   const invite = await prisma.projectMember.create({
     data: {
       projectId,
       userId: user?.id,
       inviteEmail: email || user?.email || "convidado",
-      role: role || "viewer",
+      role: inviteRole,
       roleLabel: roleLabel || null,
       status: "pending",
       invitedById: userId,
@@ -424,9 +459,16 @@ async function updatePartnerRole(userId, projectId, { memberId, role, roleLabel 
     throw error;
   }
 
+  // O membro precisa pertencer a ESTE projeto (antes dava para mexer em membros de outros projetos).
+  const member = await prisma.projectMember.findFirst({ where: { id: memberId, projectId } });
+  if (!member || member.role === "owner") throw httpError(404, "Parceiro não encontrado");
+  if (role !== undefined && !ASSIGNABLE_ROLES.includes(role)) throw httpError(400, "Papel inválido");
+  if (typeof roleLabel === "string" && roleLabel.length > 60) throw httpError(400, "Função com no máximo 60 caracteres");
+
   return prisma.projectMember.update({
-    where: { id: memberId },
-    data: { role, roleLabel },
+    where: { id: member.id },
+    data: { role: role ?? member.role, roleLabel: roleLabel ?? member.roleLabel },
+    select: MEMBER_SELECT,
   });
 }
 
@@ -438,8 +480,11 @@ async function removePartner(userId, projectId, partnerUserId) {
     throw error;
   }
 
+  // Sem isso, um userId vazio apagaria TODOS os membros do projeto.
+  if (!partnerUserId || partnerUserId === project.ownerId) throw httpError(400, "Parceiro inválido");
+
   const removed = await prisma.projectMember.deleteMany({
-    where: { projectId, userId: partnerUserId },
+    where: { projectId, userId: partnerUserId, role: { not: "owner" } },
   });
 
   if (partnerUserId) {
