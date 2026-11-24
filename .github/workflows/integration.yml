@@ -66,6 +66,11 @@ jobs:
         run: npx prisma migrate deploy
         working-directory: apps/api
 
+      # migrate deploy cria as tabelas, mas não gera o código do Prisma Client.
+      - name: Gerar o Prisma Client
+        run: npx prisma generate
+        working-directory: apps/api
+
       - name: Testes de integração
         run: npm run test:integration
         working-directory: apps/api
