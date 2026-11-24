@@ -28,6 +28,7 @@ const commentRoutes = require("./routes/comments");
 const chatRoutes = require("./routes/chat");
 const playlistRoutes = require("./routes/playlists");
 const planRoutes = require("./routes/plan");
+const homeRoutes = require("./routes/home");
 
 const app = express();
 
@@ -60,6 +61,7 @@ app.use("/comments", commentRoutes);
 app.use("/chat", chatRoutes);
 app.use("/playlists", playlistRoutes);
 app.use("/plan", planRoutes);
+app.use("/home", homeRoutes);
 
 app.use(errorHandler);
 

@@ -134,3 +134,36 @@ export async function apiRequest(path, { method = "GET", body, token } = {}) {
   trackApiSuccess(method, path);
   return response.json();
 }
+
+// Upload com FormData (arquivos). Usa o mesmo esquema de renovação de sessão do apiRequest.
+export async function apiUpload(path, formData) {
+  const send = (token) =>
+    fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+  let response = await send(await getFreshAccessToken());
+  if (response.status === 401) {
+    const newToken = await tryRefresh();
+    if (!newToken) {
+      clearTokens();
+      window.location.href = "/login";
+      throw new Error("Sessão expirada");
+    }
+    response = await send(newToken);
+  }
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (data.code === "PLAN_LIMIT_REACHED") track("limite_do_plano_atingido", data.details);
+    const reference = data.requestId ? ` (código ${data.requestId.slice(0, 8)})` : "";
+    const failure = new Error(`${data.message || "Erro no envio"}${reference}`);
+    failure.code = data.code;
+    failure.status = response.status;
+    if (response.status >= 500) captureError(failure, { requestId: data.requestId, path });
+    throw failure;
+  }
+  return data;
+}

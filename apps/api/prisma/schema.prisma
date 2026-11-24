@@ -83,6 +83,11 @@ model User {
   bio           String?
   isActive      Boolean          @default(true)
   theme         ThemePreference  @default(light)
+  // Perfil musical, usado em "Encontrar parceiros"
+  role          String?
+  genres        Json?
+  city          String?
+  openToCollab  Boolean          @default(false)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -113,6 +118,8 @@ model User {
   conversationsAsUser2 Conversation[] @relation("ConversationUser2")
   messagesSent         Message[]      @relation("MessageSender")
   subscription         Subscription?
+  tasksAssigned        TaskCard[]     @relation("TaskAssignee")
+  fileComments         FileComment[]
 }
 
 model RefreshToken {
@@ -144,6 +151,7 @@ model Project {
   comments    ProjectComment[]
   statusLog   ProjectStatusLog[]
   files       FileAsset[]
+  bpm         Int?
   tracks      Track[]
   socialPosts SocialPost[]
   events      ProjectEvent[]
@@ -201,6 +209,10 @@ model TaskCard {
   title       String
   description String?
   flag        TaskFlag @default(none)
+  done        Boolean  @default(false)
+  dueDate     DateTime?
+  assigneeId  String?
+  assignee    User?    @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -236,9 +248,27 @@ model FileAsset {
   url        String
   storageKey String
   sizeBytes  BigInt       @default(0)
+  // Duração e forma de onda (picos de 0 a 1), calculadas no navegador de quem envia.
+  durationSec Float?
+  peaks      Json?
   createdAt  DateTime     @default(now())
 
   versions   FileVersion[]
+  comments   FileComment[]
+}
+
+// Comentário numa versão de áudio, opcionalmente preso a um momento (atSeconds).
+model FileComment {
+  id        String    @id @default(cuid())
+  fileId    String
+  file      FileAsset @relation(fields: [fileId], references: [id])
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  atSeconds Float?
+  content   String
+  createdAt DateTime  @default(now())
+
+  @@index([fileId])
 }
 
 model FileVersion {

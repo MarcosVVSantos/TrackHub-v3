@@ -1,4 +1,6 @@
 const prisma = require("../lib/prisma");
+const { withResolvedUrls } = require("./storageService");
+const { PUBLIC_USER_SELECT } = require("../utils/publicUser");
 
 const MAX_NAME_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 500;
@@ -317,7 +319,86 @@ async function searchPublicTracks(userId, query = "", playlistId = null) {
   return tracks.map((t) => ({ ...t, inPlaylist: false }));
 }
 
+// Playlists automáticas: não ficam no banco, são montadas na hora a partir dos projetos.
+//  - "Em andamento": a versão mais recente de cada projeto seu que ainda não foi finalizado.
+//  - "Versões novas": áudios que outras pessoas subiram nos seus projetos nos últimos 7 dias.
+const AUTO_FILE_SELECT = {
+  id: true,
+  url: true,
+  name: true,
+  durationSec: true,
+  createdAt: true,
+  versions: { select: { version: true }, take: 1 },
+  uploader: { select: PUBLIC_USER_SELECT },
+  project: { select: { id: true, name: true, status: true, coverUrl: true } },
+};
+
+function toAutoTrack(file) {
+  return {
+    fileId: file.id,
+    title: file.project.name,
+    projectId: file.project.id,
+    status: file.project.status,
+    coverUrl: file.project.coverUrl,
+    version: file.versions[0]?.version || "v1",
+    uploader: file.uploader,
+    createdAt: file.createdAt,
+    durationSec: file.durationSec,
+    url: file.url,
+  };
+}
+
+async function listAutoPlaylists(userId) {
+  const mine = { archivedAt: null, OR: [{ ownerId: userId }, { members: { some: { userId, status: "accepted" } } }] };
+
+  const [inProgressProjects, recentFiles] = await Promise.all([
+    prisma.project.findMany({
+      where: { ...mine, status: { not: "finished" } },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+      select: {
+        files: {
+          where: { type: { startsWith: "audio/" } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: AUTO_FILE_SELECT,
+        },
+      },
+    }),
+    prisma.fileAsset.findMany({
+      where: {
+        type: { startsWith: "audio/" },
+        uploaderId: { not: userId },
+        createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        project: mine,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: AUTO_FILE_SELECT,
+    }),
+  ]);
+
+  const inProgress = await withResolvedUrls(inProgressProjects.flatMap((project) => project.files));
+  const recent = await withResolvedUrls(recentFiles);
+
+  return [
+    {
+      id: "auto-em-andamento",
+      name: "Em andamento",
+      description: "A versão mais recente de cada projeto seu que ainda não foi finalizado. Atualiza sozinha.",
+      tracks: inProgress.map(toAutoTrack),
+    },
+    {
+      id: "auto-versoes-novas",
+      name: "Versões novas",
+      description: "O que seus parceiros subiram nos seus projetos nos últimos 7 dias.",
+      tracks: recent.map(toAutoTrack),
+    },
+  ];
+}
+
 module.exports = {
+  listAutoPlaylists,
   createPlaylist,
   listMyPlaylists,
   getPlaylist,

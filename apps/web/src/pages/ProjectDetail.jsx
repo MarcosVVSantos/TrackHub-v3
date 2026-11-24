@@ -1,608 +1,416 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { apiRequest, getAccessToken, API_URL } from "../api/client";
-import Skeleton from "../components/Skeleton";
-import { track } from "../lib/analytics";
-import { MessageSquare, UploadCloud, CheckCircle, ArrowLeft, Calendar, Lock, Globe } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Check, Globe, ImagePlus, ListPlus, Lock, Pencil, UploadCloud } from "lucide-react";
+import { apiRequest, apiUpload } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { Page } from "../components/layout/AppShell";
+import { AvatarStack } from "../components/ui/Avatar";
+import { EmptyState, ErrorNote, SkeletonBlock } from "../components/ui/States";
+import TrackPanel, { versionOf } from "../components/project/TrackPanel";
+import TasksTab from "../components/project/TasksTab";
+import TeamTab from "../components/project/TeamTab";
+import AgendaTab from "../components/project/AgendaTab";
+import HistoryTab from "../components/project/HistoryTab";
+import EditProjectModal from "../components/project/EditProjectModal";
+import SaveToPlaylistModal from "../components/project/SaveToPlaylistModal";
+import { analyzeAudio } from "../lib/audioPeaks";
+import { track } from "../lib/analytics";
+import { STAGES, stageIndex, stageOf, timeAgo, formatTime } from "../lib/format";
 
-function ProjectDetail() {
+const TABS = [
+  { id: "faixa", label: "Faixa" },
+  { id: "tarefas", label: "Tarefas" },
+  { id: "equipe", label: "Equipe" },
+  { id: "agenda", label: "Agenda" },
+  { id: "historico", label: "Histórico" },
+];
+
+// O que sugerir como próximo passo, de acordo com a etapa e o que já existe no projeto.
+function nextStep(project, audioFiles, openTasks) {
+  if (audioFiles.length === 0) return "Envie a primeira versão da faixa para a equipe ouvir.";
+  if (openTasks > 0) return `Ainda há ${openTasks} ${openTasks === 1 ? "tarefa aberta" : "tarefas abertas"}.`;
+  const stage = stageIndex(project.status);
+  if (stage < STAGES.length - 1) return `Quando estiver pronto, avance para ${STAGES[stage + 1].label}.`;
+  if (!project.isPublic) return "Faixa finalizada! Envie uma capa e publique para a comunidade ouvir.";
+  return "Faixa publicada. Compartilhe e acompanhe em Desempenho.";
+}
+
+export default function ProjectDetail() {
   const { id } = useParams();
-  const [project, setProject] = useState(null);
-  const [comment, setComment] = useState("");
-  const [file, setFile] = useState(null);
-  const [version, setVersion] = useState("v1");
-  const [error, setError] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [sendingComment, setSendingComment] = useState(false);
-  const [taskForm, setTaskForm] = useState({ title: "", description: "", flag: "none" });
-  const fileInputRef = useRef(null);
-  const coverInputRef = useRef(null);
-  const [coverUploading, setCoverUploading] = useState(false);
-  const [visibilityLoading, setVisibilityLoading] = useState(false);
-  const [eventForm, setEventForm] = useState({
-    title: "",
-    description: "",
-    startsAt: "",
-    endsAt: "",
-    participantIds: [],
-  });
-  const [eventLoading, setEventLoading] = useState(false);
-  const [eventError, setEventError] = useState("");
-  const [editingEventId, setEditingEventId] = useState(null);
   const { user } = useAuth() || {};
+  const [params, setParams] = useSearchParams();
+  const [project, setProject] = useState(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [uploading, setUploading] = useState("");
+  const [version, setVersion] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [playlistOpen, setPlaylistOpen] = useState(false);
+  const fileInput = useRef(null);
+  const coverInput = useRef(null);
 
-  async function loadProject() {
+  const tab = TABS.some((item) => item.id === params.get("tab")) ? params.get("tab") : "faixa";
+  const fileParam = params.get("file");
+
+  async function load() {
     try {
-      const token = getAccessToken();
-      const data = await apiRequest(`/projects/${id}`, { token });
-      setProject(data);
+      setProject(await apiRequest(`/projects/${id}`));
     } catch (err) {
       setError(err.message);
     }
   }
 
   useEffect(() => {
-    loadProject();
+    setProject(null);
+    load();
   }, [id]);
 
-  async function handleComment(event) {
-    event.preventDefault();
-    const token = getAccessToken();
-    setSendingComment(true);
-    await apiRequest(`/projects/${id}/comments`, { method: "POST", body: { content: comment }, token });
-    setComment("");
-    setSendingComment(false);
-    loadProject();
+  function setTab(next) {
+    const copy = new URLSearchParams(params);
+    copy.set("tab", next);
+    setParams(copy, { replace: true });
   }
 
-  async function handleUpload(selectedFile) {
-    if (!selectedFile || uploading) return;
-    const token = getAccessToken();
-    setUploading(true);
-    const formData = new FormData();
-    const normalizedVersion = version.trim() || "v1";
-    formData.append("file", selectedFile);
-    formData.append("version", normalizedVersion);
-
-    const response = await fetch(`${API_URL}/projects/${id}/files`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: "Erro no upload" }));
-      setError(errorData.message);
-      setUploading(false);
-      if (errorData.code === "PLAN_LIMIT_REACHED") {
-        track("limite_do_plano_atingido", errorData.details);
-      }
-      return;
-    }
-
-    track("arquivo_enviado", { tipo: selectedFile.type, versao: normalizedVersion });
-
-    setFile(null);
-    setVersion(normalizedVersion);
-    setUploading(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    loadProject();
+  function selectFile(fileId) {
+    const copy = new URLSearchParams(params);
+    copy.set("file", fileId);
+    setParams(copy, { replace: true });
   }
 
-  async function handleTask(event) {
-    event.preventDefault();
-    const token = getAccessToken();
-    await apiRequest(`/projects/${id}/tasks`, { method: "POST", body: taskForm, token });
-    setTaskForm({ title: "", description: "", flag: "none" });
-    loadProject();
-  }
-
-  const isOwner = user?.id === project?.ownerId;
+  const isOwner = project && user?.id === project.ownerId;
   const currentMember = project?.members?.find((member) => member.userId === user?.id);
+  const canEdit = isOwner || currentMember?.role === "editor";
+  const audioFiles = useMemo(() => (project?.files || []).filter((file) => file.type?.startsWith("audio/")), [project]);
+  const otherFiles = useMemo(() => (project?.files || []).filter((file) => !file.type?.startsWith("audio/")), [project]);
+  const team = useMemo(() => {
+    if (!project) return [];
+    const people = [project.owner, ...(project.members || []).filter((m) => m.status === "accepted").map((m) => m.user)].filter(Boolean);
+    return people.filter((person, index) => people.findIndex((other) => other.id === person.id) === index);
+  }, [project]);
+  const suggestedVersion = `v${audioFiles.length + 1}`;
+  const publicTrack = project?.tracks?.find((item) => item.isPublic);
 
-  async function handleCoverUpload(selectedFile) {
-    if (!selectedFile) return;
-    setCoverUploading(true);
+  async function upload(file) {
+    if (!file) return;
     setError("");
-    const token = getAccessToken();
-    const formData = new FormData();
-    formData.append("cover", selectedFile);
-    const response = await fetch(`${API_URL}/projects/${id}/cover`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({ message: "Erro ao enviar capa" }));
-      setError(data.message);
-      setCoverUploading(false);
-      return;
-    }
-    const data = await response.json();
-    setProject((prev) => ({ ...prev, coverUrl: data.coverUrl }));
-    setCoverUploading(false);
-  }
-
-  async function handleVisibilityChange(value) {
-    if (!isOwner) return;
-    setVisibilityLoading(true);
-    setError("");
+    setNotice("");
+    const tag = version.trim() || suggestedVersion;
     try {
-      const token = getAccessToken();
-      const updated = await apiRequest(`/projects/${id}`, {
-        method: "PUT",
-        body: { isPublic: value },
-        token,
-      });
-      setProject((prev) => ({ ...prev, ...updated }));
+      setUploading("Analisando o áudio…");
+      // A onda é calculada aqui no navegador, assim o servidor não precisa decodificar o áudio.
+      const meta = file.type.startsWith("audio/") ? await analyzeAudio(file) : null;
+      setUploading("Enviando…");
+      const form = new FormData();
+      form.append("file", file);
+      form.append("version", tag);
+      if (meta) {
+        form.append("durationSec", String(meta.durationSec));
+        form.append("peaks", JSON.stringify(meta.peaks));
+      }
+      const created = await apiUpload(`/projects/${id}/files`, form);
+      track("arquivo_enviado", { tipo: file.type, versao: tag });
+      setVersion("");
+      setNotice(`${tag} enviada. A equipe foi avisada.`);
+      await load();
+      if (created?.id && file.type.startsWith("audio/")) selectFile(created.id);
     } catch (err) {
       setError(err.message);
     } finally {
-      setVisibilityLoading(false);
+      setUploading("");
+      if (fileInput.current) fileInput.current.value = "";
     }
   }
 
-  async function handleCreateEvent(event) {
-    event.preventDefault();
-    setEventLoading(true);
-    setEventError("");
+  async function uploadCover(file) {
+    if (!file) return;
+    setError("");
     try {
-      const token = getAccessToken();
-      const payload = {
-        title: eventForm.title,
-        description: eventForm.description,
-        startsAt: eventForm.startsAt,
-        endsAt: eventForm.endsAt || null,
-        participantIds: eventForm.participantIds,
-      };
-      if (editingEventId) {
-        await apiRequest(`/calendar/projects/${id}/events/${editingEventId}`, {
-          method: "PUT",
-          body: payload,
-          token,
-        });
-      } else {
-        await apiRequest(`/calendar/projects/${id}/events`, {
-          method: "POST",
-          body: payload,
-          token,
-        });
-      }
-      setEventForm({ title: "", description: "", startsAt: "", endsAt: "", participantIds: [] });
-      setEditingEventId(null);
-      loadProject();
+      const form = new FormData();
+      form.append("cover", file);
+      const data = await apiUpload(`/projects/${id}/cover`, form);
+      setProject((prev) => ({ ...prev, coverUrl: data.coverUrl }));
     } catch (err) {
-      setEventError(err.message);
+      setError(err.message);
     } finally {
-      setEventLoading(false);
+      if (coverInput.current) coverInput.current.value = "";
     }
   }
 
-  async function handleCalendarShareInvite(memberId) {
-    const token = getAccessToken();
-    await apiRequest(`/calendar/projects/${id}/calendar-share`, {
-      method: "POST",
-      body: { memberId },
-      token,
-    });
-    loadProject();
-  }
-
-  async function handleCalendarShareResponse(action) {
-    const token = getAccessToken();
-    await apiRequest(`/calendar/projects/${id}/calendar-share/${action}`, {
-      method: "POST",
-      token,
-    });
-    loadProject();
-  }
-
-  async function handleRemovePartner(member) {
-    if (!member?.userId) return;
-    const confirmed = window.confirm("Remover parceiro do projeto?");
-    if (!confirmed) return;
-    const token = getAccessToken();
-    await apiRequest(`/projects/${id}/partner/${member.userId}`, { method: "DELETE", token });
-    loadProject();
-  }
-
-  function toggleParticipant(userId) {
-    setEventForm((prev) => {
-      const exists = prev.participantIds.includes(userId);
-      return {
-        ...prev,
-        participantIds: exists
-          ? prev.participantIds.filter((idValue) => idValue !== userId)
-          : [...prev.participantIds, userId],
-      };
-    });
-  }
-
-  function startEditEvent(item) {
-    setEditingEventId(item.id);
-    setEventForm({
-      title: item.title || "",
-      description: item.description || "",
-      startsAt: item.startsAt ? new Date(item.startsAt).toISOString().slice(0, 16) : "",
-      endsAt: item.endsAt ? new Date(item.endsAt).toISOString().slice(0, 16) : "",
-      participantIds: item.participants?.map((participant) => participant.userId) || [],
-    });
-  }
-
-  if (error) {
-    return <div className="mx-auto max-w-6xl p-6 text-red-500">{error}</div>;
+  async function update(body) {
+    setError("");
+    try {
+      const updated = await apiRequest(`/projects/${id}`, { method: "PUT", body });
+      setProject((prev) => ({ ...prev, ...updated }));
+      if (body.status) load();
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   if (!project) {
     return (
-      <div className="mx-auto max-w-6xl p-6">
-        <Skeleton lines={8} />
-      </div>
+      <Page>
+        {error ? (
+          <EmptyState title="Não deu para abrir o projeto" text={error} action={<Link to="/projects" className="btn-secondary">Voltar para projetos</Link>} />
+        ) : (
+          <div className="flex flex-col gap-4">
+            <SkeletonBlock className="h-24" />
+            <SkeletonBlock className="h-64" />
+          </div>
+        )}
+      </Page>
     );
   }
 
+  const stage = stageOf(project.status);
+  const current = stageIndex(project.status);
+  const openTasks = (project.tasks || []).filter((task) => !task.done).length;
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <Link
-        to="/projects"
-        className="inline-flex items-center gap-2 text-sm text-brand-primary hover:text-brand-primary/80"
-      >
-        <ArrowLeft size={16} />
-        Voltar para projetos
+    <Page wide>
+      <Link to="/projects" className="-mb-4 inline-flex min-h-[44px] self-start items-center gap-2 text-sm text-th-muted hover:text-th-text">
+        <ArrowLeft size={16} aria-hidden="true" /> Meus projetos
       </Link>
-      <div className="card">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-brand-primary">{project.name}</h2>
-            <p className="text-sm text-gray-500 dark:text-brand-textMuted">{project.description}</p>
-            <div className="flex flex-wrap gap-2 text-xs text-gray-400 dark:text-brand-textMuted">
-              {project.tags?.map((tag) => (
-                <span key={tag} className="rounded-full bg-brand-accent/20 px-2 py-1">
-                  #{tag}
-                </span>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-brand-textMuted">
-              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-2 py-1 dark:border-brand-darkOutline">
-                {project.isPublic ? <Globe size={12} /> : <Lock size={12} />}
-                {project.isPublic ? "Público" : "Privado"}
-              </span>
-              {isOwner && (
-                <select
-                  className="input h-8 text-xs"
-                  value={project.isPublic ? "public" : "private"}
-                  onChange={(event) => handleVisibilityChange(event.target.value === "public")}
-                  disabled={visibilityLoading}
-                >
-                  <option value="private">Privado</option>
-                  <option value="public">Público</option>
-                </select>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col items-start gap-2">
-            <div className="h-32 w-32 overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 dark:border-brand-darkOutline dark:bg-brand-darkSecondary">
-              {project.coverUrl ? (
-                <img src={project.coverUrl} alt={project.name} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400 dark:text-brand-textMuted">
-                  Sem capa
-                </div>
-              )}
-            </div>
-            {isOwner && (
-              <>
-                <input
-                  ref={coverInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  className="hidden"
-                  onChange={(event) => handleCoverUpload(event.target.files[0])}
-                />
-                <button
-                  className="btn-secondary"
-                  type="button"
-                  onClick={() => coverInputRef.current?.click()}
-                  disabled={coverUploading}
-                >
-                  {coverUploading ? "Enviando..." : "Enviar capa"}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="card">
-          <h3 className="text-sm font-semibold text-brand-primary">Comentários</h3>
-          <form className="mt-3 flex gap-2" onSubmit={handleComment}>
-            <input
-              className="input"
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
-              placeholder="Escreva um comentário"
-              required
-            />
-            <button className="btn-primary" type="submit">
-              <MessageSquare size={16} />
-              {sendingComment ? "Enviando..." : "Enviar"}
-            </button>
-          </form>
-          <div className="mt-4 space-y-2 text-sm">
-            {project.comments?.map((item) => (
-              <div key={item.id} className="rounded-lg bg-gray-50 p-3 dark:bg-brand-darkSecondary">
-                <p className="font-semibold text-brand-primary">{item.user?.name}</p>
-                <p className="text-gray-500 dark:text-brand-textMuted">{item.content}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <h3 className="text-sm font-semibold text-brand-primary">Uploads</h3>
-          <div className="mt-3 space-y-3">
-            <input
-              ref={fileInputRef}
-              className="sr-only"
-              type="file"
-              onChange={(event) => {
-                const selected = event.target.files?.[0];
-                if (!selected) return;
-                setFile(selected);
-                handleUpload(selected);
-              }}
-              required
-            />
-            <input
-              className="input"
-              placeholder="Versão (ex: v2)"
-              value={version}
-              onChange={(event) => setVersion(event.target.value)}
-            />
-            <button
-              className="btn-primary"
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              <UploadCloud size={16} />
-              {uploading ? "Enviando..." : "Upload"}
-            </button>
-          </div>
-          <div className="mt-4 space-y-2 text-sm">
-            {project.files?.map((item) => (
-              <div key={item.id} className="rounded-lg bg-gray-50 p-3 dark:bg-brand-darkSecondary">
-                <p className="font-semibold text-brand-primary">{item.name}</p>
-                <p className="text-gray-500 dark:text-brand-textMuted">{item.type}</p>
-                <p className="text-xs text-gray-400 dark:text-brand-textMuted">Versões: {item.versions?.length || 0}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="card">
-          <h3 className="text-sm font-semibold text-brand-primary">Parceiros</h3>
-          <div className="mt-3 space-y-2 text-sm">
-            {project.members?.filter((member) => member.status === "accepted").map((member) => (
-              <div
-                key={member.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 p-3 dark:border-brand-darkOutline"
+      {/* Cabeçalho */}
+      <header className="flex flex-col gap-5 md:flex-row md:items-start">
+        <div className="relative h-28 w-28 flex-none overflow-hidden rounded-2xl border border-th-line bg-th-raised">
+          {project.coverUrl ? (
+            <img src={project.coverUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs text-th-muted">Sem capa</div>
+          )}
+          {isOwner && (
+            <>
+              <input ref={coverInput} type="file" accept="image/png,image/jpeg" className="sr-only" onChange={(event) => uploadCover(event.target.files?.[0])} aria-label="Enviar capa" tabIndex={-1} />
+              <button
+                type="button"
+                onClick={() => coverInput.current?.click()}
+                className="absolute bottom-1.5 right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black"
+                aria-label={project.coverUrl ? "Trocar capa" : "Enviar capa"}
               >
-                <div>
-                  <p className="font-semibold text-gray-700 dark:text-brand-text">
-                    {member.user?.name || member.inviteEmail}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-brand-textMuted">
-                    {member.roleLabel || "Sem função"} · {member.role}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {isOwner && member.userId && member.userId !== user?.id && (
-                    <>
-                      <button
-                        className="btn-secondary"
-                        type="button"
-                        onClick={() => handleCalendarShareInvite(member.userId)}
-                        disabled={member.calendarShareStatus === "pending"}
-                      >
-                        {member.calendarShareStatus === "accepted"
-                          ? "Agenda ativa"
-                          : member.calendarShareStatus === "pending"
-                            ? "Convite enviado"
-                            : "Compartilhar agenda"}
-                      </button>
-                      <button
-                        className="btn-secondary"
-                        type="button"
-                        onClick={() => handleRemovePartner(member)}
-                      >
-                        Remover
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-            {currentMember?.calendarShareStatus === "pending" && !isOwner && (
-              <div className="rounded-lg border border-dashed border-gray-200 p-3 text-xs text-gray-500 dark:border-brand-darkOutline">
-                <p>Convite para agenda compartilhada.</p>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    className="btn-secondary"
-                    type="button"
-                    onClick={() => handleCalendarShareResponse("decline")}
-                  >
-                    Recusar
-                  </button>
-                  <button
-                    className="btn-primary"
-                    type="button"
-                    onClick={() => handleCalendarShareResponse("accept")}
-                  >
-                    Aceitar
-                  </button>
-                </div>
-              </div>
-            )}
+                <ImagePlus size={16} aria-hidden="true" />
+              </button>
+            </>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow" style={{ color: stage.color }}>
+            {stage.label}
+          </p>
+          <h1 className="mt-1 break-words text-[28px] font-semibold leading-tight">{project.name}</h1>
+          <p className="mt-1 text-sm text-th-muted">
+            {[project.owner?.name && `de ${project.owner.name}`, project.bpm && `${project.bpm} BPM`, ...(project.tags || [])].filter(Boolean).join(" · ")}
+          </p>
+          {project.description && <p className="mt-2 max-w-2xl text-sm text-th-text2">{project.description}</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <AvatarStack users={team} />
+            <span className="inline-flex items-center gap-1.5 text-xs text-th-muted">
+              {project.isPublic ? <Globe size={14} aria-hidden="true" /> : <Lock size={14} aria-hidden="true" />}
+              {project.isPublic ? "Público" : "Privado"}
+            </span>
           </div>
         </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-brand-primary">Agenda do projeto</h3>
-            <Calendar size={16} className="text-brand-primary" />
-          </div>
-          <form className="mt-3 space-y-3" onSubmit={handleCreateEvent}>
-            <input
-              className="input"
-              placeholder="Título do evento"
-              value={eventForm.title}
-              onChange={(event) => setEventForm({ ...eventForm, title: event.target.value })}
-              required
-            />
-            <input
-              className="input"
-              type="datetime-local"
-              value={eventForm.startsAt}
-              onChange={(event) => setEventForm({ ...eventForm, startsAt: event.target.value })}
-              required
-            />
-            <input
-              className="input"
-              type="datetime-local"
-              value={eventForm.endsAt}
-              onChange={(event) => setEventForm({ ...eventForm, endsAt: event.target.value })}
-            />
-            <textarea
-              className="input"
-              placeholder="Descrição"
-              value={eventForm.description}
-              onChange={(event) => setEventForm({ ...eventForm, description: event.target.value })}
-            />
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-500 dark:text-brand-textMuted">Participantes</p>
-              <div className="flex flex-wrap gap-2">
-                {project.members?.filter((member) => member.status === "accepted").map((member) => (
-                  <button
-                    key={member.id}
-                    type="button"
-                    className={`rounded-full border px-3 py-1 text-xs transition ${
-                      eventForm.participantIds.includes(member.userId)
-                        ? "border-brand-primary bg-brand-accent/20 text-brand-primary"
-                        : "border-gray-200 text-gray-500 dark:border-brand-darkOutline dark:text-brand-textMuted"
-                    }`}
-                    onClick={() => toggleParticipant(member.userId)}
-                  >
-                    {member.user?.name || member.inviteEmail}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {eventError && <p className="text-xs text-rose-500">{eventError}</p>}
-            <button className="btn-primary" type="submit" disabled={eventLoading}>
-              <CheckCircle size={16} />
-              {eventLoading ? "Salvando..." : editingEventId ? "Atualizar" : "Agendar"}
+        <div className="flex flex-wrap gap-2 md:justify-end">
+          {publicTrack && (
+            <button type="button" className="btn-secondary" onClick={() => setPlaylistOpen(true)}>
+              <ListPlus size={16} aria-hidden="true" /> Salvar em playlist
             </button>
-          </form>
-          <div className="mt-4 space-y-2 text-sm">
-            {project.events?.length ? (
-              project.events.map((item) => (
-                <div key={item.id} className="rounded-lg bg-gray-50 p-3 dark:bg-brand-darkSecondary">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-brand-primary">{item.title}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 dark:text-brand-textMuted">
-                        {new Date(item.startsAt).toLocaleString("pt-BR")}
-                      </span>
-                      <button
-                        type="button"
-                        className="text-xs text-brand-primary"
-                        onClick={() => startEditEvent(item)}
-                      >
-                        Editar
-                      </button>
-                    </div>
-                  </div>
-                  {item.description && <p className="text-xs text-gray-500 dark:text-brand-textMuted">{item.description}</p>}
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400 dark:text-brand-textMuted">
-                    {item.participants?.map((participant) => (
-                      <span key={participant.id}>@{participant.user?.username || participant.userId}</span>
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-gray-400 dark:text-brand-textMuted">Nenhum evento agendado.</p>
-            )}
-          </div>
+          )}
+          {isOwner && (
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  if (!project.isPublic && !project.coverUrl) return setError("Envie uma capa antes de publicar o projeto.");
+                  return update({ isPublic: !project.isPublic });
+                }}
+              >
+                {project.isPublic ? <Lock size={16} aria-hidden="true" /> : <Globe size={16} aria-hidden="true" />}
+                {project.isPublic ? "Tornar privado" : "Publicar"}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setEditOpen(true)}>
+                <Pencil size={16} aria-hidden="true" /> Editar
+              </button>
+            </>
+          )}
         </div>
-      </div>
+      </header>
 
-      <div className="card">
-        <h3 className="text-sm font-semibold text-brand-primary">Tarefas / Faixas</h3>
-        <form className="mt-3 grid gap-2 md:grid-cols-3" onSubmit={handleTask}>
-          <input
-            className="input"
-            placeholder="Título"
-            value={taskForm.title}
-            onChange={(event) => setTaskForm({ ...taskForm, title: event.target.value })}
-            required
-          />
-          <input
-            className="input"
-            placeholder="Descrição"
-            value={taskForm.description}
-            onChange={(event) => setTaskForm({ ...taskForm, description: event.target.value })}
-          />
-          <select
-            className="input"
-            value={taskForm.flag}
-            onChange={(event) => setTaskForm({ ...taskForm, flag: event.target.value })}
-          >
-            <option value="none">Normal</option>
-            <option value="attention">Atenção</option>
-            <option value="blocked">Bloqueado</option>
-          </select>
-          <button className="btn-primary md:col-span-3" type="submit">
-            <CheckCircle size={16} />
-            Adicionar tarefa
-          </button>
-        </form>
-        <div className="mt-4 grid gap-2 text-sm">
-          {project.tasks?.map((task) => (
-            <div key={task.id} className="rounded-lg bg-gray-50 p-3 dark:bg-brand-darkSecondary">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-brand-primary">{task.title}</p>
-                {task.flag !== "none" && (
-                  <span className="text-xs text-red-500">{task.flag}</span>
+      {/* Etapas */}
+      <nav aria-label="Etapa da faixa">
+        <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {STAGES.map((item, index) => {
+            const done = index < current;
+            const active = index === current;
+            const content = (
+              <>
+                <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: active || done ? item.color : undefined }}>
+                  <span
+                    aria-hidden="true"
+                    className="flex h-5 w-5 items-center justify-center rounded-full border text-[10px]"
+                    style={{ borderColor: item.color, background: done || active ? item.color : "transparent", color: "#141217" }}
+                  >
+                    {done ? <Check size={12} /> : index + 1}
+                  </span>
+                  {item.label}
+                </span>
+                <span className="mt-1 block text-xs text-th-muted">{item.hint}</span>
+              </>
+            );
+            const base = `block h-full w-full rounded-xl border px-4 py-3 text-left ${active ? "border-th-line2 bg-th-surface" : "border-th-line"}`;
+            return (
+              <li key={item.id}>
+                {isOwner && !active ? (
+                  <button type="button" className={`${base} hover:border-th-hover`} onClick={() => update({ status: item.id })} aria-label={`Mover para ${item.label}`}>
+                    {content}
+                  </button>
+                ) : (
+                  <div className={base} aria-current={active ? "step" : undefined}>
+                    {content}
+                  </div>
                 )}
-              </div>
-              {task.description && <p className="text-gray-500 dark:text-brand-textMuted">{task.description}</p>}
-            </div>
-          ))}
-        </div>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+
+      {/* Abas */}
+      <div role="tablist" aria-label="Seções do projeto" className="-mb-2 flex gap-1 overflow-x-auto border-b border-th-line">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            role="tab"
+            id={`tab-${item.id}`}
+            aria-selected={tab === item.id}
+            aria-controls={`panel-${item.id}`}
+            onClick={() => setTab(item.id)}
+            className={`-mb-px min-h-[44px] whitespace-nowrap border-b-2 px-4 text-sm font-semibold transition ${
+              tab === item.id ? "border-th-lilac text-th-text" : "border-transparent text-th-muted hover:text-th-text"
+            }`}
+          >
+            {item.label}
+            {item.id === "tarefas" && openTasks > 0 && <span className="ml-1.5 text-xs text-th-muted">{openTasks}</span>}
+          </button>
+        ))}
       </div>
 
-      <div className="card">
-        <h3 className="text-sm font-semibold text-brand-primary">Histórico de status</h3>
-        <div className="mt-3 grid gap-2 text-sm">
-          {project.statusLog?.map((log) => (
-            <div key={log.id} className="rounded-lg bg-gray-50 p-3 dark:bg-brand-darkSecondary">
-              <span>{log.fromStatus} → {log.toStatus}</span>
+      <ErrorNote>{error}</ErrorNote>
+      {notice && (
+        <p role="status" className="text-sm text-stage-finished">
+          {notice}
+        </p>
+      )}
+
+      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+        {tab === "faixa" && (
+          <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
+            <div className="flex min-w-0 flex-col gap-5">
+              {audioFiles.length ? (
+                <TrackPanel
+                  project={project}
+                  files={audioFiles}
+                  fileId={fileParam}
+                  onSelectFile={selectFile}
+                  currentUser={user}
+                  isOwner={isOwner}
+                />
+              ) : (
+                <EmptyState icon={UploadCloud} title="Nenhuma versão ainda" text={canEdit ? "Envie a primeira versão: um áudio de referência, uma guia ou o beat." : "Quando a equipe enviar uma versão, ela aparece aqui."} />
+              )}
+
+              {otherFiles.length > 0 && (
+                <section className="card" aria-labelledby="arquivos">
+                  <h2 id="arquivos" className="mb-3 font-semibold">
+                    Outros arquivos
+                  </h2>
+                  <ul className="flex flex-col gap-2 text-sm">
+                    {otherFiles.map((file) => (
+                      <li key={file.id} className="flex items-center gap-3">
+                        <a href={file.url} target="_blank" rel="noreferrer" className="flex-1 truncate text-th-link underline-offset-2 hover:underline">
+                          {file.name}
+                        </a>
+                        <span className="text-xs text-th-muted">
+                          {versionOf(file)} · {timeAgo(file.createdAt)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
             </div>
-          ))}
-        </div>
+
+            <aside className="flex flex-col gap-5">
+              <section className="card" aria-labelledby="proximo">
+                <h2 id="proximo" className="eyebrow">
+                  Próximo passo
+                </h2>
+                <p className="mt-2 text-sm text-th-text2">{nextStep(project, audioFiles, openTasks)}</p>
+              </section>
+
+              {canEdit && (
+                <section className="card flex flex-col gap-3" aria-labelledby="enviar">
+                  <h2 id="enviar" className="font-semibold">
+                    Enviar nova versão
+                  </h2>
+                  <div>
+                    <label htmlFor="up-version" className="label">
+                      Nome da versão
+                    </label>
+                    <input id="up-version" className="input" maxLength={20} placeholder={suggestedVersion} value={version} onChange={(event) => setVersion(event.target.value)} />
+                  </div>
+                  <input ref={fileInput} type="file" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(event) => upload(event.target.files?.[0])} />
+                  <button type="button" className="btn-primary" disabled={Boolean(uploading)} onClick={() => fileInput.current?.click()}>
+                    <UploadCloud size={16} aria-hidden="true" />
+                    {uploading || "Escolher arquivo"}
+                  </button>
+                  <p className="text-xs text-th-muted">Áudio (MP3, WAV, FLAC, M4A), imagem ou PDF.</p>
+                </section>
+              )}
+
+              {audioFiles.length > 0 && (
+                <section className="card p-0" aria-labelledby="versoes">
+                  <h2 id="versoes" className="border-b border-th-line px-5 py-4 font-semibold">
+                    Histórico de versões
+                  </h2>
+                  <ul>
+                    {audioFiles.map((file) => (
+                      <li key={file.id}>
+                        <button
+                          type="button"
+                          onClick={() => selectFile(file.id)}
+                          className={`flex w-full items-center gap-3 border-b border-th-line px-5 py-3 text-left last:border-0 hover:bg-th-raised ${
+                            (fileParam || audioFiles[0].id) === file.id ? "bg-th-raised" : ""
+                          }`}
+                        >
+                          <span className="w-10 text-sm font-semibold">{versionOf(file)}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm">{file.uploader?.name}</span>
+                            <span className="text-xs text-th-muted">
+                              {timeAgo(file.createdAt)}
+                              {file.durationSec ? ` · ${formatTime(file.durationSec)}` : ""}
+                            </span>
+                          </span>
+                          {file._count?.comments > 0 && <span className="text-xs text-th-muted">{file._count.comments} coment.</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </aside>
+          </div>
+        )}
+        {tab === "tarefas" && <TasksTab project={project} team={team} canEdit={canEdit} onChange={load} />}
+        {tab === "equipe" && <TeamTab project={project} currentUser={user} isOwner={isOwner} currentMember={currentMember} onChange={load} />}
+        {tab === "agenda" && <AgendaTab project={project} team={team} canEdit={canEdit} onChange={load} />}
+        {tab === "historico" && <HistoryTab project={project} onComment={load} />}
       </div>
-    </div>
+
+      <EditProjectModal open={editOpen} project={project} onClose={() => setEditOpen(false)} onSaved={(updated) => setProject((prev) => ({ ...prev, ...updated }))} />
+      {publicTrack && <SaveToPlaylistModal open={playlistOpen} onClose={() => setPlaylistOpen(false)} trackId={publicTrack.id} />}
+    </Page>
   );
 }
-
-export default ProjectDetail;

@@ -45,8 +45,19 @@ async function listProjects(userId, { tags, status } = {}) {
         where: { type: { startsWith: "audio/" } },
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { id: true, url: true, type: true, name: true, storageKey: true },
+        select: {
+          id: true,
+          url: true,
+          type: true,
+          name: true,
+          durationSec: true,
+          createdAt: true,
+          versions: { select: { version: true }, take: 1 },
+          uploader: { select: PUBLIC_USER_SELECT },
+        },
       },
+      owner: { select: PUBLIC_USER_SELECT },
+      _count: { select: { files: { where: { type: { startsWith: "audio/" } } } } },
     },
     orderBy: [{ status: "asc" }, { order: "asc" }, { updatedAt: "desc" }],
   });
@@ -82,10 +93,14 @@ async function getProject(userId, projectId) {
     },
     include: {
       members: { select: MEMBER_SELECT },
-      tasks: true,
+      tasks: { include: { assignee: { select: PUBLIC_USER_SELECT } }, orderBy: [{ done: "asc" }, { updatedAt: "desc" }] },
       comments: { include: { user: { select: PUBLIC_USER_SELECT } } },
       statusLog: true,
-      files: { include: { versions: true, uploader: { select: PUBLIC_USER_SELECT } } },
+      files: {
+        include: { versions: true, uploader: { select: PUBLIC_USER_SELECT }, _count: { select: { comments: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+      owner: { select: PUBLIC_USER_SELECT },
       tracks: true,
       events: {
         include: {
@@ -120,6 +135,7 @@ async function createProject(userId, rawData) {
       status: data.status || "idea",
       order: count + 1,
       tags: data.tags || [],
+      bpm: data.bpm ?? null,
       isPublic: Boolean(data.isPublic),
       coverUrl: data.coverUrl || null,
       ownerId: userId,
@@ -186,6 +202,7 @@ async function updateProject(userId, projectId, rawData) {
       description: data.description ?? project.description,
       status: data.status ?? project.status,
       tags: data.tags ?? project.tags,
+      bpm: data.bpm !== undefined ? data.bpm : project.bpm,
       order: Number.isInteger(data.order) ? data.order : project.order,
       isPublic: data.isPublic ?? project.isPublic,
       coverUrl: data.coverUrl ?? project.coverUrl,

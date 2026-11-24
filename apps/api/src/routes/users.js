@@ -20,6 +20,7 @@ const upload = multer({
 
 router.get("/me", authenticate, controller.getMe);
 router.get("/explore", authenticate, controller.explore);
+router.get("/suggestions", authenticate, controller.suggestions);
 router.put("/me", authenticate, controller.updateMe);
 router.post("/avatar", authenticate, upload.single("avatar"), controller.uploadAvatar);
 

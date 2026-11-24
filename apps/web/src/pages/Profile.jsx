@@ -232,7 +232,7 @@ function Profile() {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-6xl p-6">
+      <div className="mx-auto w-full max-w-[1240px] px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
         <div className="card">Faça login para visualizar perfis públicos.</div>
       </div>
     );
@@ -240,7 +240,7 @@ function Profile() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl p-6">
+      <div className="mx-auto w-full max-w-[1240px] px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
         <Skeleton lines={8} />
       </div>
     );
@@ -248,8 +248,8 @@ function Profile() {
 
   if (error || !profile) {
     return (
-      <div className="mx-auto max-w-6xl p-6">
-        <div className="card border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-200">
+      <div className="mx-auto w-full max-w-[1240px] px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
+        <div className="card border border-th-danger/30 bg-th-danger/10 text-th-danger">
           {error || "Perfil não encontrado."}
         </div>
       </div>
@@ -257,7 +257,7 @@ function Profile() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
+    <div className="mx-auto w-full flex max-w-[1240px] flex-col gap-6 px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
       <div className="card flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -272,7 +272,7 @@ function Profile() {
                   onChange={(event) => handleAvatarUpload(event.target.files[0])}
                 />
                 <button
-                  className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full border border-brand-primary/30 bg-white text-brand-primary shadow-sm dark:border-brand-text/30 dark:bg-brand-dark"
+                  className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full border border-th-lilac/30 bg-th-surface text-th-lilac shadow-sm"
                   onClick={() => fileRef.current?.click()}
                   title="Alterar avatar"
                   type="button"
@@ -301,10 +301,10 @@ function Profile() {
                 </div>
               </div>
             ) : (
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-brand-text">{profile.name}</h2>
+              <h2 className="text-2xl font-semibold text-th-text">{profile.name}</h2>
             )}
-            <p className="text-sm text-gray-400 dark:text-brand-textMuted">@{profile.username}</p>
-            {avatarError && <p className="mt-2 text-xs text-rose-500">{avatarError}</p>}
+            <p className="text-sm text-th-muted">@{profile.username}</p>
+            {avatarError && <p className="mt-2 text-xs text-th-danger">{avatarError}</p>}
             {isOwner && editingBio ? (
               <div className="mt-2 flex flex-col gap-2">
                 <textarea
@@ -322,7 +322,7 @@ function Profile() {
                 </div>
               </div>
             ) : (
-              <p className="mt-2 text-sm text-gray-600 dark:text-brand-textMuted">
+              <p className="mt-2 text-sm text-th-text2">
                 {profile.bio || "Este criador ainda não adicionou uma bio."}
               </p>
             )}
@@ -356,8 +356,8 @@ function Profile() {
             key={item.id}
             className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
               tab === item.id
-                ? "border-brand-primary bg-brand-primary/10 text-brand-primary dark:border-brand-text dark:bg-brand-darkOutline dark:text-brand-text"
-                : "border-transparent bg-gray-100 text-gray-600 hover:text-brand-primary dark:bg-brand-darkOutline dark:text-brand-textMuted"
+                ? "border-th-lilac bg-th-lilac/10 text-th-lilac   "
+                : "border-transparent bg-th-raised text-th-text2 hover:text-th-lilac  "
             }`}
             onClick={() => setTab(item.id)}
           >
@@ -379,18 +379,18 @@ function Profile() {
               <div key={track.id} className="card space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-14 w-14 overflow-hidden rounded-xl bg-gray-100 dark:bg-brand-darkOutline">
+                    <div className="h-14 w-14 overflow-hidden rounded-xl bg-th-raised">
                       {track.coverUrl ? (
                         <img src={track.coverUrl} alt={track.title} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-brand-textMuted">
+                        <div className="flex h-full w-full items-center justify-center text-th-muted">
                           <Music size={18} />
                         </div>
                       )}
                     </div>
                     <div>
-                      <p className="text-base font-semibold text-gray-800 dark:text-brand-text">{track.title}</p>
-                      <p className="text-xs text-gray-500 dark:text-brand-textMuted">{track.project?.name}</p>
+                      <p className="text-base font-semibold text-th-text">{track.title}</p>
+                      <p className="text-xs text-th-muted">{track.project?.name}</p>
                     </div>
                   </div>
                   <TagList tags={track.project?.tags} />
@@ -400,14 +400,14 @@ function Profile() {
                     {currentTrack?.id === track.id && isPlaying ? <Pause size={16} /> : <Play size={16} />}
                     {currentTrack?.id === track.id && isPlaying ? "Pausar" : "Tocar"}
                   </button>
-                  <span className="text-xs text-gray-400 dark:text-brand-textMuted">
+                  <span className="text-xs text-th-muted">
                     {track._count?.plays || 0} plays · {track._count?.likes || 0} curtidas · {track._count?.comments || 0} comentários
                   </span>
                 </div>
                 {currentTrack?.id === track.id && (
-                  <div className="h-1 w-full rounded-full bg-gray-100 dark:bg-brand-darkOutline">
+                  <div className="h-1 w-full rounded-full bg-th-raised">
                     <div
-                      className="h-1 rounded-full bg-brand-primary"
+                      className="h-1 rounded-full bg-th-lilac"
                       style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}
                     />
                   </div>
@@ -427,18 +427,18 @@ function Profile() {
               <div key={project.id} className="card space-y-3">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-16 w-16 overflow-hidden rounded-2xl bg-gray-100 dark:bg-brand-darkOutline">
+                    <div className="h-16 w-16 overflow-hidden rounded-2xl bg-th-raised">
                       {project.coverUrl ? (
                         <img src={project.coverUrl} alt={project.name} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-brand-textMuted">
+                        <div className="flex h-full w-full items-center justify-center text-th-muted">
                           <Layers size={18} />
                         </div>
                       )}
                     </div>
                     <div>
-                      <p className="text-base font-semibold text-gray-800 dark:text-brand-text">{project.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-brand-textMuted">Projeto público</p>
+                      <p className="text-base font-semibold text-th-text">{project.name}</p>
+                      <p className="text-xs text-th-muted">Projeto público</p>
                     </div>
                   </div>
                   <TagList tags={project.tags} />
@@ -448,7 +448,7 @@ function Profile() {
                     <Play size={16} />
                     Tocar
                   </button>
-                  <span className="text-xs text-gray-400 dark:text-brand-textMuted">
+                  <span className="text-xs text-th-muted">
                     {project.counts?.likes || 0} curtidas · {project.counts?.comments || 0} comentários
                   </span>
                 </div>
@@ -468,13 +468,13 @@ function Profile() {
                 <div className="flex items-center gap-3">
                   <Avatar user={post.author} />
                   <div>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-brand-text">{post.author?.name}</p>
-                    <p className="text-xs text-gray-400 dark:text-brand-textMuted">@{post.author?.username}</p>
+                    <p className="text-sm font-semibold text-th-text">{post.author?.name}</p>
+                    <p className="text-xs text-th-muted">@{post.author?.username}</p>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-brand-textMuted">{post.content}</p>
+                <p className="text-sm text-th-text2">{post.content}</p>
                 <PostReference post={post} />
-                <div className="text-xs text-gray-400 dark:text-brand-textMuted">
+                <div className="text-xs text-th-muted">
                   {post._count?.likes || 0} curtidas · {post._count?.comments || 0} comentários
                 </div>
               </div>
@@ -500,10 +500,10 @@ function Profile() {
               <div key={playlist.id} className="card space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <Link to={`/playlists/${playlist.id}`} className="text-base font-semibold text-gray-800 dark:text-brand-text hover:underline">
+                    <Link to={`/playlists/${playlist.id}`} className="text-base font-semibold text-th-text hover:underline">
                       {playlist.name}
                     </Link>
-                    <p className="text-xs text-gray-400 dark:text-brand-textMuted">
+                    <p className="text-xs text-th-muted">
                       {playlist._count?.tracks || 0} faixas
                     </p>
                   </div>
@@ -541,7 +541,7 @@ function Avatar({ user, size = "sm" }) {
         .join("")
     : "";
   return (
-    <div className={`${classes} flex items-center justify-center rounded-full bg-brand-primary/20 text-sm font-semibold text-brand-primary`}>
+    <div className={`${classes} flex items-center justify-center rounded-full bg-th-lilac/20 text-sm font-semibold text-th-lilac`}>
       {initials}
     </div>
   );
@@ -549,10 +549,10 @@ function Avatar({ user, size = "sm" }) {
 
 function Stat({ icon: Icon, label, value }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-brand-textMuted">
+    <div className="flex items-center gap-2 text-xs text-th-muted">
       <Icon size={14} />
       <span>{label}:</span>
-      <span className="font-semibold text-gray-800 dark:text-brand-text">{value}</span>
+      <span className="font-semibold text-th-text">{value}</span>
     </div>
   );
 }
@@ -564,7 +564,7 @@ function TagList({ tags }) {
       {tags.map((tag) => (
         <span
           key={tag}
-          className="rounded-full border border-brand-primary/20 bg-brand-primary/5 px-2.5 py-1 text-xs font-medium text-brand-primary dark:border-brand-text/20 dark:bg-brand-darkOutline/60 dark:text-brand-text"
+          className="rounded-full border border-th-lilac/20 bg-th-lilac/10 px-2.5 py-1 text-xs font-medium text-th-lilac"
         >
           {tag}
         </span>
@@ -576,15 +576,15 @@ function TagList({ tags }) {
 function PostReference({ post }) {
   if (!post.project && !post.track && !post.playlist) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-500 dark:text-brand-textMuted">
+    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-th-muted">
       {post.project && (
-        <Link to={`/projects/${post.project.id}`} className="rounded-full bg-gray-100 px-2 py-1 dark:bg-brand-darkOutline">
+        <Link to={`/projects/${post.project.id}`} className="rounded-full bg-th-raised px-2 py-1">
           <Layers size={12} className="mr-1 inline" />
           {post.project.name}
         </Link>
       )}
       {post.track && (
-        <span className="rounded-full bg-gray-100 px-2 py-1 dark:bg-brand-darkOutline">
+        <span className="rounded-full bg-th-raised px-2 py-1">
           <Music size={12} className="mr-1 inline" />
           {post.track.title}
         </span>
@@ -594,7 +594,7 @@ function PostReference({ post }) {
 }
 
 function EmptyState({ message }) {
-  return <div className="card text-sm text-gray-500 dark:text-brand-textMuted">{message}</div>;
+  return <div className="card text-sm text-th-muted">{message}</div>;
 }
 
-export default Profile;
+export default Profile;

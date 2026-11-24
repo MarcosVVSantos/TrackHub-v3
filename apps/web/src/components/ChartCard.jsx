@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } f
 function ChartCard({ title, data, accent = "#5B1669", valueFormatter }) {
   return (
     <div className="card">
-      <h3 className="text-sm font-semibold text-gray-500 dark:text-brand-textMuted">{title}</h3>
+      <h3 className="text-sm font-semibold text-th-muted">{title}</h3>
       <div className="mt-4 h-48">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>

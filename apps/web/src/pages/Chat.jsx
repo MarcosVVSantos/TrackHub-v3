@@ -14,7 +14,7 @@ function Avatar({ user, size = "md" }) {
   return user?.avatarUrl ? (
     <img src={user.avatarUrl} alt={user.name} className={`${cls} rounded-full object-cover shrink-0`} />
   ) : (
-    <div className={`${cls} rounded-full bg-brand-accent/30 flex items-center justify-center font-semibold text-brand-primary shrink-0`}>
+    <div className={`${cls} rounded-full bg-th-accent/30 flex items-center justify-center font-semibold text-th-lilac shrink-0`}>
       {initials}
     </div>
   );
@@ -26,23 +26,23 @@ function ConversationItem({ conv, isActive, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition hover:bg-gray-50 dark:hover:bg-white/5 ${
-        isActive ? "bg-gray-100 dark:bg-white/10" : ""
+      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition hover:bg-th-raised  ${
+        isActive ? "bg-th-raised " : ""
       }`}
     >
       <Avatar user={conv.other} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-medium text-sm text-gray-900 dark:text-brand-text truncate">
+          <span className="font-medium text-sm text-th-text truncate">
             {conv.other?.name}
           </span>
           {conv.lastMessage && (
-            <span className="text-xs text-gray-400 shrink-0">
+            <span className="text-xs text-th-muted shrink-0">
               {new Date(conv.lastMessage.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
         </div>
-        <p className={`text-xs truncate mt-0.5 ${hasUnread ? "font-semibold text-gray-800 dark:text-brand-text" : "text-gray-400 dark:text-gray-500"}`}>
+        <p className={`text-xs truncate mt-0.5 ${hasUnread ? "font-semibold text-th-text " : "text-th-muted "}`}>
           {conv.lastMessage?.content || "Iniciar conversa"}
         </p>
       </div>
@@ -57,12 +57,12 @@ function MessageBubble({ message, isOwn }) {
       <div
         className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words ${
           isOwn
-            ? "bg-purple-600 text-white rounded-br-sm"
-            : "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-brand-text rounded-bl-sm"
+            ? "bg-th-lilac text-th-bg rounded-br-sm"
+            : "bg-th-raised  text-th-text  rounded-bl-sm"
         }`}
       >
         {message.content}
-        <span className={`block text-xs mt-1 ${isOwn ? "text-purple-200" : "text-gray-400"}`}>
+        <span className={`block text-xs mt-1 ${isOwn ? "text-th-lilac" : "text-th-muted"}`}>
           {new Date(message.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>
@@ -180,20 +180,20 @@ export default function Chat() {
   ].filter(Boolean);
 
   return (
-    <div className="mx-auto max-w-5xl h-[calc(100vh-80px)] flex bg-white dark:bg-brand-dark border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden m-4 shadow-sm">
+    <div className="mx-4 mt-6 flex h-[calc(100vh-200px)] overflow-hidden rounded-2xl border border-th-line bg-th-surface sm:mx-6 lg:mx-10 lg:h-[calc(100vh-140px)] xl:mx-auto xl:max-w-[1240px]">
 
       {/* Sidebar de conversas */}
-      <div className={`w-full md:w-72 shrink-0 border-r border-gray-100 dark:border-white/10 flex flex-col ${!mobileShowConv ? "hidden md:flex" : "flex"}`}>
-        <div className="px-4 py-4 border-b border-gray-100 dark:border-white/10">
-          <h2 className="font-semibold text-gray-900 dark:text-brand-text">Mensagens</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Seguidores mútuos</p>
+      <div className={`w-full md:w-72 shrink-0 border-r border-th-line  flex flex-col ${!mobileShowConv ? "hidden md:flex" : "flex"}`}>
+        <div className="px-4 py-4 border-b border-th-line">
+          <h2 className="font-semibold text-th-text">Mensagens</h2>
+          <p className="text-xs text-th-muted mt-0.5">Seguidores mútuos</p>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {allContacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
-              <MessageCircle size={32} className="text-gray-300 dark:text-gray-600" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <MessageCircle size={32} className="text-th-muted" />
+              <p className="text-sm text-th-muted">
                 Nenhum contato ainda. Siga alguém e espere ser seguido de volta para iniciar uma conversa.
               </p>
             </div>
@@ -217,27 +217,27 @@ export default function Chat() {
       <div className={`flex-1 flex flex-col ${mobileShowConv ? "hidden md:flex" : "flex"}`}>
         {!activeUserId ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
-            <MessageCircle size={40} className="text-gray-300 dark:text-gray-600" />
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
+            <MessageCircle size={40} className="text-th-muted" />
+            <p className="text-th-muted text-sm">
               Selecione uma conversa para começar
             </p>
           </div>
         ) : (
           <>
             {/* Header da conversa */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-white/10 shrink-0">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-th-line shrink-0">
               <button
-                className="md:hidden text-gray-500"
+                className="md:hidden text-th-muted"
                 onClick={() => setMobileShowConv(true)}
               >
                 <ArrowLeft size={20} />
               </button>
               {activeUser && <Avatar user={activeUser} />}
               <div>
-                <p className="font-semibold text-sm text-gray-900 dark:text-brand-text">
+                <p className="font-semibold text-sm text-th-text">
                   {activeUser?.name}
                 </p>
-                <p className="text-xs text-gray-400">@{activeUser?.username}</p>
+                <p className="text-xs text-th-muted">@{activeUser?.username}</p>
               </div>
             </div>
 
@@ -245,14 +245,14 @@ export default function Chat() {
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {loading && (
                 <div className="flex justify-center py-8">
-                  <Loader2 size={20} className="animate-spin text-gray-400" />
+                  <Loader2 size={20} className="animate-spin text-th-muted" />
                 </div>
               )}
               {error && (
-                <p className="text-center text-sm text-red-500">{error}</p>
+                <p className="text-center text-sm text-th-danger">{error}</p>
               )}
               {!loading && messages.length === 0 && (
-                <p className="text-center text-sm text-gray-400 py-8">
+                <p className="text-center text-sm text-th-muted py-8">
                   Nenhuma mensagem ainda. Diga oi!
                 </p>
               )}
@@ -269,10 +269,10 @@ export default function Chat() {
             {/* Input */}
             <form
               onSubmit={handleSend}
-              className="flex items-end gap-2 px-4 py-3 border-t border-gray-100 dark:border-white/10 shrink-0"
+              className="flex items-end gap-2 px-4 py-3 border-t border-th-line shrink-0"
             >
               <textarea
-                className="flex-1 resize-none rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-2.5 text-sm text-gray-900 dark:text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 max-h-32"
+                className="flex-1 resize-none rounded-xl border border-th-line bg-th-raised px-4 py-2.5 text-sm text-th-text placeholder-th-muted focus:outline-none focus:ring-2 focus:ring-th-accent max-h-32"
                 placeholder="Escreva uma mensagem..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -283,7 +283,7 @@ export default function Chat() {
               <button
                 type="submit"
                 disabled={!input.trim() || sending}
-                className="h-10 w-10 flex items-center justify-center rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition shrink-0"
+                className="h-10 w-10 flex items-center justify-center rounded-xl bg-th-surface hover:bg-th-text2 disabled:opacity-40 disabled:cursor-not-allowed text-th-bg transition shrink-0"
               >
                 {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               </button>

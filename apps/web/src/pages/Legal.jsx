@@ -7,12 +7,12 @@ const UPDATED_AT = "24 de novembro de 2026";
 function LegalLayout({ title, children }) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
-      <Link to="/" className="text-sm text-brand-primary">
+      <Link to="/" className="text-sm text-th-lilac">
         Voltar para o início
       </Link>
-      <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-brand-text">{title}</h1>
-      <p className="mt-1 text-sm text-gray-500">Última atualização: {UPDATED_AT}</p>
-      <div className="legal mt-8 space-y-6 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+      <h1 className="mt-4 text-3xl font-bold text-th-text">{title}</h1>
+      <p className="mt-1 text-sm text-th-muted">Última atualização: {UPDATED_AT}</p>
+      <div className="legal mt-8 space-y-6 text-sm leading-relaxed text-th-text">
         {children}
       </div>
     </div>
@@ -22,7 +22,7 @@ function LegalLayout({ title, children }) {
 function Section({ title, children }) {
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-brand-text">{title}</h2>
+      <h2 className="text-lg font-semibold text-th-text">{title}</h2>
       {children}
     </section>
   );
@@ -83,7 +83,7 @@ export function Terms() {
       </Section>
       <Section title="8. Contato">
         <p>
-          Dúvidas: <a className="text-brand-primary" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+          Dúvidas: <a className="text-th-lilac" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
         </p>
       </Section>
     </LegalLayout>
@@ -136,7 +136,7 @@ export function Privacy() {
       <Section title="6. Seus direitos">
         <p>
           Você pode pedir acesso, correção, cópia, exclusão dos seus dados ou revogar consentimentos, escrevendo
-          para <a className="text-brand-primary" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+          para <a className="text-th-lilac" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
           Respondemos em até 15 dias.
         </p>
       </Section>

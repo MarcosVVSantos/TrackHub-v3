@@ -27,11 +27,11 @@ function Calendar() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1240px] space-y-6 px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold text-brand-primary">Agenda</h2>
-          <p className="text-sm text-gray-500 dark:text-brand-textMuted">Eventos de projetos próprios e compartilhados.</p>
+          <h2 className="text-2xl font-semibold text-th-lilac">Agenda</h2>
+          <p className="text-sm text-th-muted">Eventos de projetos próprios e compartilhados.</p>
         </div>
         <button className="btn-secondary" onClick={loadEvents} type="button">
           <RefreshCcw size={16} />
@@ -42,16 +42,16 @@ function Calendar() {
       {loading && <Skeleton lines={8} />}
 
       {!loading && error && (
-        <div className="card border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-200">
+        <div className="card border border-th-danger/30 bg-th-danger/10 text-th-danger">
           <p>{error}</p>
-          <button className="mt-2 text-xs text-brand-primary" onClick={loadEvents}>
+          <button className="mt-2 text-xs text-th-lilac" onClick={loadEvents}>
             Tentar novamente
           </button>
         </div>
       )}
 
       {!loading && !error && events.length === 0 && (
-        <div className="card flex items-center gap-3 text-sm text-gray-500 dark:text-brand-textMuted">
+        <div className="card flex items-center gap-3 text-sm text-th-muted">
           <CalendarIcon size={18} />
           Nenhum evento agendado.
         </div>
@@ -62,16 +62,16 @@ function Calendar() {
           {events.map((event) => (
             <div key={event.id} className="card space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-base font-semibold text-brand-primary">{event.title}</p>
-                <span className="text-xs text-gray-400 dark:text-brand-textMuted">
+                <p className="text-base font-semibold text-th-lilac">{event.title}</p>
+                <span className="text-xs text-th-muted">
                   {new Date(event.startsAt).toLocaleString("pt-BR")}
                 </span>
               </div>
               {event.project?.name && (
-                <p className="text-xs text-gray-500 dark:text-brand-textMuted">Projeto: {event.project.name}</p>
+                <p className="text-xs text-th-muted">Projeto: {event.project.name}</p>
               )}
-              {event.description && <p className="text-sm text-gray-600 dark:text-brand-textMuted">{event.description}</p>}
-              <div className="flex flex-wrap gap-2 text-xs text-gray-400 dark:text-brand-textMuted">
+              {event.description && <p className="text-sm text-th-text2">{event.description}</p>}
+              <div className="flex flex-wrap gap-2 text-xs text-th-muted">
                 {(event.participants || []).map((participant) => (
                   <span key={participant.id}>@{participant.user?.username || participant.userId}</span>
                 ))}

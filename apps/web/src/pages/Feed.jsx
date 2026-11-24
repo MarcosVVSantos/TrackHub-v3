@@ -45,7 +45,7 @@ function TagList({ tags }) {
       {tags.map((tag) => (
         <span
           key={tag}
-          className="rounded-full border border-brand-primary/20 bg-brand-primary/5 px-2.5 py-1 text-xs font-medium text-brand-primary dark:border-brand-text/20 dark:bg-brand-darkOutline/60 dark:text-brand-text"
+          className="rounded-full border border-th-lilac/20 bg-th-lilac/10 px-2.5 py-1 text-xs font-medium text-th-lilac"
         >
           {tag}
         </span>
@@ -56,8 +56,8 @@ function TagList({ tags }) {
 
 function EmptyState({ title, description, cta }) {
   return (
-    <div className="card flex flex-col gap-3 text-sm text-gray-500 dark:text-brand-textMuted">
-      <p className="text-base font-semibold text-gray-700 dark:text-brand-text">{title}</p>
+    <div className="card flex flex-col gap-3 text-sm text-th-muted">
+      <p className="text-base font-semibold text-th-text">{title}</p>
       <p>{description}</p>
       {cta && (
         <Link className="btn-secondary w-fit" to={cta.href}>
@@ -527,7 +527,7 @@ function Feed() {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4 p-6">
+      <div className="mx-auto w-full max-w-[1240px] space-y-4 px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
         <EmptyState
           title="Entre para ver seu feed"
           description="Siga artistas e comece a descobrir novas produções no TrackHub."
@@ -539,8 +539,8 @@ function Feed() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-6xl p-6">
-        <div className="card flex flex-col gap-3 border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-200">
+      <div className="mx-auto w-full max-w-[1240px] px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
+        <div className="card flex flex-col gap-3 border border-th-danger/30 bg-th-danger/10 text-th-danger">
           <p>{error}</p>
           <button className="btn-secondary w-fit" onClick={() => loadTab(activeTab)}>
             Tentar novamente
@@ -551,7 +551,7 @@ function Feed() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
+    <div className="mx-auto w-full flex max-w-[1240px] flex-col gap-6 px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
       <audio
         ref={playlistAudioRef}
         onTimeUpdate={handlePlaylistTimeUpdate}
@@ -560,14 +560,14 @@ function Feed() {
       />
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-brand-text">Feed</h2>
-          <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+          <h1 className="text-[28px] font-semibold text-th-text">Comunidade</h1>
+          <p className="text-sm text-th-muted">
             Descubra produções, interaja e acompanhe playlists dos artistas que você segue.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link className="btn-secondary" to="/explore">
-            Explorar artistas
+            Encontrar parceiros
           </Link>
           {activeTab === "productions" && (
             <button className="btn-primary w-fit" onClick={() => setShowPostModal(true)}>
@@ -584,8 +584,8 @@ function Feed() {
             key={tab.id}
             className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
               activeTab === tab.id
-                ? "border-brand-primary bg-brand-primary/10 text-brand-primary dark:border-brand-text dark:bg-brand-darkOutline dark:text-brand-text"
-                : "border-transparent bg-gray-100 text-gray-600 hover:text-brand-primary dark:bg-brand-darkOutline dark:text-brand-textMuted"
+                ? "border-th-lilac bg-th-lilac/10 text-th-lilac   "
+                : "border-transparent bg-th-raised text-th-text2 hover:text-th-lilac  "
             }`}
             onClick={() => setActiveTab(tab.id)}
           >
@@ -606,17 +606,17 @@ function Feed() {
             <div className="card sticky top-24 z-10 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-brand-text">Tocando agora</p>
-                  <p className="text-sm text-gray-500 dark:text-brand-textMuted">{currentTrack.title}</p>
+                  <p className="text-sm font-semibold text-th-text">Tocando agora</p>
+                  <p className="text-sm text-th-muted">{currentTrack.title}</p>
                 </div>
                 <button className="btn-secondary" onClick={handlePauseTrack}>
                   <Pause size={16} />
                   Pausar
                 </button>
               </div>
-              <div className="h-1 w-full rounded-full bg-gray-100 dark:bg-brand-darkOutline">
+              <div className="h-1 w-full rounded-full bg-th-raised">
                 <div
-                  className="h-1 rounded-full bg-brand-primary"
+                  className="h-1 rounded-full bg-th-lilac"
                   style={{ width: `${playlistDuration ? (playlistProgress / playlistDuration) * 100 : 0}%` }}
                 />
               </div>
@@ -627,7 +627,7 @@ function Feed() {
             <EmptyState
               title="Seu feed está vazio"
               description="Siga artistas para ver as produções mais recentes por aqui."
-              cta={{ label: "Explorar artistas", href: "/explore" }}
+              cta={{ label: "Encontrar parceiros", href: "/explore" }}
             />
           ) : (
             <>
@@ -636,19 +636,19 @@ function Feed() {
                   <div className="flex items-center gap-3">
                     <Avatar user={post.author} />
                     <div>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-brand-text">
+                      <p className="text-sm font-semibold text-th-text">
                         {post.author?.name}
                       </p>
-                      <p className="text-xs text-gray-400 dark:text-brand-textMuted">
+                      <p className="text-xs text-th-muted">
                         @{post.author?.username} · {formatRelativeTime(post.createdAt)}
                       </p>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-brand-textMuted">{post.content}</p>
+                  <p className="text-sm text-th-text2">{post.content}</p>
                   <PostReference post={post} />
                   <div className="flex flex-wrap gap-3">
                     <button className="btn-secondary" onClick={() => handleLikePost(post.id)}>
-                      <Heart size={16} className={post.liked ? "fill-rose-500 text-rose-500" : ""} />
+                      <Heart size={16} className={post.liked ? "fill-rose-500 text-th-danger" : ""} />
                       Curtir ({post._count?.likes || 0})
                     </button>
                     <button className="btn-secondary" onClick={() => toggleComments(post.id)}>
@@ -661,16 +661,16 @@ function Feed() {
                     </button>
                   </div>
                   {commentsByPost[post.id]?.open && (
-                    <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-brand-darkOutline dark:bg-brand-darkOutline/60">
+                    <div className="rounded-xl border border-th-line bg-th-raised p-4">
                       {commentsByPost[post.id]?.loading && (
-                        <div className="text-xs text-gray-400 dark:text-brand-textMuted">Carregando comentários...</div>
+                        <div className="text-xs text-th-muted">Carregando comentários...</div>
                       )}
                       {commentsByPost[post.id]?.error && (
-                        <div className="text-xs text-rose-500">{commentsByPost[post.id].error}</div>
+                        <div className="text-xs text-th-danger">{commentsByPost[post.id].error}</div>
                       )}
                       {!commentsByPost[post.id]?.loading &&
                         (!commentsByPost[post.id]?.items || commentsByPost[post.id].items.length === 0) && (
-                          <p className="text-xs text-gray-500 dark:text-brand-textMuted">
+                          <p className="text-xs text-th-muted">
                             Nenhum comentário ainda. Seja o primeiro.
                           </p>
                         )}
@@ -689,7 +689,7 @@ function Feed() {
                               <div className="flex-1">
                                 <div className="flex items-start justify-between gap-2">
                                   <div>
-                                    <p className="text-xs font-semibold text-gray-700 dark:text-brand-text">
+                                    <p className="text-xs font-semibold text-th-text">
                                       @{comment.user?.username}
                                     </p>
                                     {isEditing ? (
@@ -713,7 +713,7 @@ function Feed() {
                                         </div>
                                       </div>
                                     ) : (
-                                      <p className="text-sm text-gray-600 dark:text-brand-textMuted">
+                                      <p className="text-sm text-th-text2">
                                         {comment.content}
                                       </p>
                                     )}
@@ -721,7 +721,7 @@ function Feed() {
                                   {isAuthor && !isEditing && (
                                     <div className="relative">
                                       <button
-                                        className="rounded-full p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 group-hover:opacity-100 dark:text-brand-textMuted dark:hover:bg-brand-darkOutline"
+                                        className="rounded-full p-1 text-th-muted opacity-0 transition hover:bg-th-raised group-hover:opacity-100"
                                         onClick={() =>
                                           setCommentMenuId((prev) => (prev === comment.id ? null : comment.id))
                                         }
@@ -729,15 +729,15 @@ function Feed() {
                                         <span className="text-lg">⋯</span>
                                       </button>
                                       {commentMenuId === comment.id && (
-                                        <div className="absolute right-0 mt-1 w-28 rounded-lg border border-gray-100 bg-white p-1 shadow-md dark:border-brand-darkOutline dark:bg-brand-darkSecondary">
+                                        <div className="absolute right-0 mt-1 w-28 rounded-lg border border-th-line bg-th-surface p-1 shadow-md">
                                           <button
-                                            className="w-full rounded-md px-2 py-1 text-left text-xs hover:bg-gray-50 dark:hover:bg-brand-darkOutline"
+                                            className="w-full rounded-md px-2 py-1 text-left text-xs hover:bg-th-raised"
                                             onClick={() => startEditComment(post.id, comment)}
                                           >
                                             Editar
                                           </button>
                                           <button
-                                            className="w-full rounded-md px-2 py-1 text-left text-xs text-rose-500 hover:bg-rose-50"
+                                            className="w-full rounded-md px-2 py-1 text-left text-xs text-th-danger hover:bg-th-danger/10"
                                             onClick={() => setConfirmDeleteId(comment.id)}
                                           >
                                             Excluir
@@ -748,13 +748,13 @@ function Feed() {
                                   )}
                                 </div>
                                 {!isEditing && (
-                                  <p className="mt-1 text-xs text-gray-400 dark:text-brand-textMuted">
+                                  <p className="mt-1 text-xs text-th-muted">
                                     {formatRelativeTime(comment.createdAt)}
                                   </p>
                                 )}
                                 {confirmDeleteId === comment.id && (
                                   <div className="mt-2 flex items-center gap-2 text-xs">
-                                    <span className="text-gray-500 dark:text-brand-textMuted">Excluir comentário?</span>
+                                    <span className="text-th-muted">Excluir comentário?</span>
                                     <button className="btn-secondary" type="button" onClick={() => setConfirmDeleteId(null)}>
                                       Cancelar
                                     </button>
@@ -787,7 +787,7 @@ function Feed() {
                 <div key={post.id} className="card space-y-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="flex gap-4">
-                      <div className="h-20 w-20 overflow-hidden rounded-2xl bg-gray-100 dark:bg-brand-darkOutline">
+                      <div className="h-20 w-20 overflow-hidden rounded-2xl bg-th-raised">
                         {post.project?.coverUrl ? (
                           <img
                             src={post.project.coverUrl}
@@ -795,22 +795,22 @@ function Feed() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-brand-textMuted">
+                          <div className="flex h-full w-full items-center justify-center text-th-muted">
                             <Layers size={20} />
                           </div>
                         )}
                       </div>
                       <div>
-                        <p className="text-lg font-semibold text-gray-800 dark:text-brand-text">
+                        <p className="text-lg font-semibold text-th-text">
                           {post.project?.name}
                         </p>
                         <Link
                           to={`/profile/${post.project?.owner?.username || post.project?.owner?.id}`}
-                          className="text-xs font-semibold text-brand-primary"
+                          className="text-xs font-semibold text-th-lilac"
                         >
                           {post.project?.owner?.name || "Autor"}
                         </Link>
-                        <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+                        <p className="text-sm text-th-muted">
                           Projeto público
                         </p>
                       </div>
@@ -824,7 +824,7 @@ function Feed() {
                         {currentTrack?.id === post.project?.id && isPlaying ? "Pausar" : "Play"}
                     </button>
                     <button className="btn-secondary" onClick={() => handleLikeProjectPost(post.id)}>
-                      <Heart size={16} className={post.liked ? "fill-rose-500 text-rose-500" : ""} />
+                      <Heart size={16} className={post.liked ? "fill-rose-500 text-th-danger" : ""} />
                       Curtir ({post._count?.likes || 0})
                     </button>
                     <button className="btn-secondary" onClick={() => handleSaveProjectPost(post.id, post.saved)}>
@@ -850,7 +850,7 @@ function Feed() {
                 <div key={track.id} className="card space-y-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="flex gap-4">
-                      <div className="h-16 w-16 overflow-hidden rounded-xl bg-gray-100 dark:bg-brand-darkOutline">
+                      <div className="h-16 w-16 overflow-hidden rounded-xl bg-th-raised">
                         {track.coverUrl ? (
                           <img
                             src={track.coverUrl}
@@ -858,7 +858,7 @@ function Feed() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-brand-textMuted">
+                          <div className="flex h-full w-full items-center justify-center text-th-muted">
                             <Music size={20} />
                           </div>
                         )}
@@ -871,16 +871,16 @@ function Feed() {
                               onSave={(value) => handleUpdateTrackTitle(track.id, value)}
                             />
                           ) : (
-                            <h3 className="text-lg font-semibold text-gray-800 dark:text-brand-text">{track.title}</h3>
+                            <h3 className="text-lg font-semibold text-th-text">{track.title}</h3>
                           )}
                         </div>
                         <Link
                           to={`/profile/${track.project?.owner?.username || track.project?.owner?.id}`}
-                          className="text-xs font-semibold text-brand-primary"
+                          className="text-xs font-semibold text-th-lilac"
                         >
                           {track.project?.owner?.name || "Autor"}
                         </Link>
-                        <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+                        <p className="text-sm text-th-muted">
                           {track.project?.name}
                         </p>
                       </div>
@@ -894,7 +894,7 @@ function Feed() {
                         {currentTrack?.id === track.id && isPlaying ? "Pausar" : "Tocar"}
                     </button>
                     <button className="btn-secondary" onClick={() => handleLikeTrack(track.id)}>
-                      <Heart size={16} className={track.liked ? "fill-rose-500 text-rose-500" : ""} />
+                      <Heart size={16} className={track.liked ? "fill-rose-500 text-th-danger" : ""} />
                       Curtir ({track._count?.likes || 0})
                     </button>
                     <button className="btn-secondary" onClick={() => handleSaveTrack(track)}>
@@ -910,7 +910,7 @@ function Feed() {
                         {track.isFollowing ? "Seguindo" : "Seguir"}
                       </button>
                     )}
-                    <span className="text-xs text-gray-400 dark:text-brand-textMuted">
+                    <span className="text-xs text-th-muted">
                       {track._count?.plays || 0} plays
                     </span>
                   </div>
@@ -926,7 +926,7 @@ function Feed() {
       {!loading && activeTab === "playlists" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Link to="/playlists" className="flex items-center gap-2 text-sm text-brand-primary hover:underline">
+            <Link to="/playlists" className="flex items-center gap-2 text-sm text-th-lilac hover:underline">
               <ListMusic size={15} />
               Minhas playlists
             </Link>
@@ -939,8 +939,8 @@ function Feed() {
             <div className="card sticky top-24 z-10 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-gray-700 dark:text-brand-text">Playlist tocando</p>
-                  <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+                  <p className="text-sm font-semibold text-th-text">Playlist tocando</p>
+                  <p className="text-sm text-th-muted">
                     {playlistPlaying.name} · {playlistPlaying.tracks[playlistIndex]?.track?.title}
                   </p>
                 </div>
@@ -949,9 +949,9 @@ function Feed() {
                   Pausar
                 </button>
               </div>
-              <div className="h-1 w-full rounded-full bg-gray-100 dark:bg-brand-darkOutline">
+              <div className="h-1 w-full rounded-full bg-th-raised">
                 <div
-                  className="h-1 rounded-full bg-brand-primary"
+                  className="h-1 rounded-full bg-th-lilac"
                   style={{ width: `${playlistDuration ? (playlistProgress / playlistDuration) * 100 : 0}%` }}
                 />
               </div>
@@ -961,21 +961,21 @@ function Feed() {
             <EmptyState
               title="Sem playlists por aqui"
               description="Siga artistas para descobrir as playlists públicas deles."
-              cta={{ label: "Explorar artistas", href: "/explore" }}
+              cta={{ label: "Encontrar parceiros", href: "/explore" }}
             />
           ) : (
             playlists.map((playlist) => (
               <div key={playlist.id} className="card space-y-3">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className="text-lg font-semibold text-gray-800 dark:text-brand-text">{playlist.name}</p>
-                    <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+                    <p className="text-lg font-semibold text-th-text">{playlist.name}</p>
+                    <p className="text-sm text-th-muted">
                       {playlist.creator?.name}
                     </p>
                   </div>
                   <TagList tags={playlist.tags} />
                 </div>
-                <p className="text-xs text-gray-400 dark:text-brand-textMuted">
+                <p className="text-xs text-th-muted">
                   {playlist._count?.tracks || 0} faixas
                 </p>
                 <div className="flex flex-wrap gap-3">
@@ -988,7 +988,7 @@ function Feed() {
                     {playlist.saved ? "Salvo" : "Salvar"}
                   </button>
                 </div>
-                <div className="space-y-2 text-sm text-gray-500 dark:text-brand-textMuted">
+                <div className="space-y-2 text-sm text-th-muted">
                   {playlist.tracks.slice(0, 3).map((entry) => (
                     <div key={entry.track.id} className="flex items-center gap-2">
                       <Music size={14} />
@@ -1028,7 +1028,7 @@ function Avatar({ user }) {
         .join("")
     : "";
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-primary/20 text-sm font-semibold text-brand-primary">
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-th-lilac/20 text-sm font-semibold text-th-lilac">
       {initials}
     </div>
   );
@@ -1043,7 +1043,7 @@ function EditableTitle({ value, onSave }) {
 
   return (
     <input
-      className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-lg font-semibold text-gray-800 focus:border-brand-primary dark:text-brand-text"
+      className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-lg font-semibold text-th-text focus:border-th-lilac"
       value={title}
       onChange={(event) => setTitle(event.target.value)}
       onBlur={() => {
@@ -1112,9 +1112,9 @@ function CommentComposer({ onSubmit, placeholder }) {
 function PostReference({ post }) {
   if (!post.project && !post.track && !post.playlist) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-500 dark:text-brand-textMuted">
+    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-th-muted">
       {post.project && (
-        <Link to={`/projects/${post.project.id}`} className="rounded-full bg-gray-100 px-2 py-1 dark:bg-brand-darkOutline">
+        <Link to={`/projects/${post.project.id}`} className="rounded-full bg-th-raised px-2 py-1">
           <Layers size={12} className="mr-1 inline" />
           {post.project.name}
         </Link>
@@ -1123,20 +1123,20 @@ function PostReference({ post }) {
         post.track.projectId ? (
           <Link
             to={`/projects/${post.track.projectId}`}
-            className="rounded-full bg-gray-100 px-2 py-1 dark:bg-brand-darkOutline"
+            className="rounded-full bg-th-raised px-2 py-1"
           >
             <Music size={12} className="mr-1 inline" />
             {post.track.title}
           </Link>
         ) : (
-          <span className="rounded-full bg-gray-100 px-2 py-1 dark:bg-brand-darkOutline">
+          <span className="rounded-full bg-th-raised px-2 py-1">
             <Music size={12} className="mr-1 inline" />
             {post.track.title}
           </span>
         )
       )}
       {post.playlist && (
-        <span className="rounded-full bg-gray-100 px-2 py-1 dark:bg-brand-darkOutline">
+        <span className="rounded-full bg-th-raised px-2 py-1">
           <Sparkles size={12} className="mr-1 inline" />
           {post.playlist.name}
         </span>
@@ -1188,10 +1188,10 @@ function CreatePostModal({ onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
-      <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl dark:bg-brand-darkSecondary">
+      <div className="w-full max-w-xl rounded-2xl bg-th-surface p-6 shadow-xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-brand-text">Criar post</h3>
-          <button className="text-sm text-gray-400 dark:text-brand-textMuted" onClick={onClose}>
+          <h3 className="text-lg font-semibold text-th-text">Criar post</h3>
+          <button className="text-sm text-th-muted" onClick={onClose}>
             Fechar
           </button>
         </div>
@@ -1227,7 +1227,7 @@ function CreatePostModal({ onClose, onSubmit }) {
             ))}
           </select>
         </div>
-        <div className="mt-4 rounded-lg border border-dashed border-brand-primary/30 bg-brand-primary/5 p-3 text-xs text-gray-500 dark:border-brand-text/30 dark:bg-brand-darkOutline/60 dark:text-brand-textMuted">
+        <div className="mt-4 rounded-lg border border-dashed border-th-lilac/30 bg-th-lilac/10 p-3 text-xs text-th-muted">
           Preview: {content || "Seu post vai aparecer aqui."}
         </div>
         <div className="mt-4 flex justify-end gap-3">

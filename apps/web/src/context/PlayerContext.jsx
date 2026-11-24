@@ -10,6 +10,9 @@ export function PlayerProvider({ children }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Fila de reprodução (usada nas playlists): ao terminar uma faixa, toca a próxima.
+  const [queue, setQueue] = useState([]);
+  const queueRef = useRef([]);
   const objectUrlRef = useRef(null);
 
   useEffect(() => {
@@ -23,6 +26,11 @@ export function PlayerProvider({ children }) {
 
     function handleEnded() {
       setIsPlaying(false);
+      const list = queueRef.current;
+      const index = list.findIndex((item) => item.audioUrl === audio.src || item.id === audio.dataset.trackId);
+      if (index >= 0 && index < list.length - 1) {
+        playTrackRef.current?.(list[index + 1]);
+      }
     }
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
@@ -54,6 +62,7 @@ export function PlayerProvider({ children }) {
     if (!track?.audioUrl) return;
     const audio = audioRef.current;
     if (!audio) return;
+    audio.dataset.trackId = track.id || "";
 
     if (track.isObjectUrl) {
       setObjectUrl(track.audioUrl);
@@ -67,6 +76,23 @@ export function PlayerProvider({ children }) {
     setCurrent(track);
     await audio.play();
     setIsPlaying(true);
+  }
+
+  const playTrackRef = useRef(null);
+  playTrackRef.current = playTrack;
+
+  async function playQueue(tracks, startIndex = 0) {
+    const list = (tracks || []).filter((item) => item?.audioUrl);
+    queueRef.current = list;
+    setQueue(list);
+    if (list[startIndex]) await playTrack(list[startIndex]);
+  }
+
+  function step(offset) {
+    const list = queueRef.current;
+    const index = list.findIndex((item) => item.id === current?.id);
+    const next = list[index + offset];
+    if (next) playTrack(next);
   }
 
   function togglePlay() {
@@ -109,11 +135,15 @@ export function PlayerProvider({ children }) {
       setDrawerOpen,
       setVolume,
       playTrack,
+      playQueue,
+      queue,
+      next: () => step(1),
+      previous: () => step(-1),
       togglePlay,
       seek,
       stop,
     }),
-    [current, isPlaying, progress, duration, volume, drawerOpen]
+    [current, isPlaying, progress, duration, volume, drawerOpen, queue]
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
