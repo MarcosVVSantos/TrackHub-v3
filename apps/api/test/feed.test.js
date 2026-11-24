@@ -192,7 +192,8 @@ test("GET /feed/social/:id/comments lists comments", async () => {
     .set("Authorization", `Bearer ${followerToken}`);
 
   assert.strictEqual(response.statusCode, 200);
-  assert.ok(response.body.items.some((item) => item.content === "Comentário"));
+  const items = Array.isArray(response.body) ? response.body : response.body.items;
+  assert.ok(items.some((item) => item.content === "Comentário"));
 });
 
 test("POST /tracks/:id/save saves a track", async () => {

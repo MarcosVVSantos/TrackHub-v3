@@ -1,5 +1,6 @@
 const userService = require("../services/userService");
 const storage = require("../services/storageService");
+const { validateImage } = require("../utils/fileType");
 
 async function getMe(req, res, next) {
   try {
@@ -28,10 +29,11 @@ async function uploadAvatar(req, res, next) {
     }
 
     const current = await userService.getMe(req.user.sub);
-    const { url } = await storage.uploadFile(req.file.buffer, req.file.originalname, req.file.mimetype);
+    const type = validateImage(req.file);
+    const { url } = await storage.uploadFile(req.file.buffer, { mime: type.mime, ext: type.ext });
     const updated = await userService.updateAvatar(req.user.sub, url);
 
-    if (current?.avatarUrl) {
+    if (current?.avatarUrl && storage.isPublicStorageUrl(current.avatarUrl)) {
       const oldKey = current.avatarUrl.split("/").pop();
       await storage.deleteFile(oldKey);
     }

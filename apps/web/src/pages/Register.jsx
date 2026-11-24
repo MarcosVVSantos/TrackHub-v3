@@ -55,6 +55,19 @@ function Register() {
           onChange={(event) => setForm({ ...form, password: event.target.value })}
           required
         />
+        <label className="flex items-start gap-2 text-sm text-gray-500">
+          <input type="checkbox" className="mt-1" required />
+          <span>
+            Li e aceito os{" "}
+            <Link className="text-brand-primary" to="/termos" target="_blank">
+              Termos de uso
+            </Link>{" "}
+            e a{" "}
+            <Link className="text-brand-primary" to="/privacidade" target="_blank">
+              Política de privacidade
+            </Link>
+          </span>
+        </label>
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button className="btn-primary w-full" type="submit">
           <UserPlus size={16} />

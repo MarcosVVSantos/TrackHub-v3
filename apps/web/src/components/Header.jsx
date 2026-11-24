@@ -11,16 +11,19 @@ import {
   UserCircle,
   Menu,
   X,
+  MessageCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNotifications } from "../context/NotificationContext";
+import { useChat } from "../context/ChatContext";
 import { apiRequest } from "../api/client";
 
 function Header() {
   const { user, logout } = useAuth();
   const { toggleTheme } = useTheme() || {};
   const { notifications, unreadCount, loading, error, loadNotifications, handleReadAll } = useNotifications();
+  const { unreadCount: chatUnread } = useChat();
   const [open, setOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarOverview, setCalendarOverview] = useState({ today: [], upcoming: [] });
@@ -128,6 +131,20 @@ function Header() {
                   </div>
                 )}
               </div>
+
+              {/* Chat */}
+              <Link
+                to="/chat"
+                className="relative flex h-10 w-10 items-center justify-center rounded-full border border-transparent text-gray-600 transition hover:bg-gray-100 dark:text-brand-textMuted dark:hover:bg-brand-darkOutline"
+                aria-label="Mensagens"
+              >
+                <MessageCircle size={18} />
+                {chatUnread > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-purple-600 px-1 text-xs font-semibold text-white">
+                    {chatUnread}
+                  </span>
+                )}
+              </Link>
 
               {/* Notifications dropdown */}
               <div className="relative">
@@ -260,6 +277,15 @@ function Header() {
                 </NavLink>
                 <NavLink to="/account" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-gray-50 dark:hover:bg-brand-darkOutline ${isActive ? "text-brand-primary font-medium" : ""}`} onClick={closeMobile}>
                   <UserCircle size={18} /> Conta
+                </NavLink>
+                <NavLink to="/chat" className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 transition hover:bg-gray-50 dark:hover:bg-brand-darkOutline ${isActive ? "text-brand-primary font-medium" : ""}`} onClick={closeMobile}>
+                  <MessageCircle size={18} />
+                  Mensagens
+                  {chatUnread > 0 && (
+                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-purple-600 px-1 text-xs font-semibold text-white">
+                      {chatUnread}
+                    </span>
+                  )}
                 </NavLink>
                 <div className="mt-2 flex gap-2 border-t border-gray-100 pt-3 dark:border-brand-darkOutline">
                   <button className="btn-secondary flex-1 justify-center" onClick={() => { toggleTheme(); closeMobile(); }}>

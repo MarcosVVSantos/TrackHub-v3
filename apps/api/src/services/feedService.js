@@ -1,5 +1,22 @@
 const prisma = require("../lib/prisma");
 const { createNotification } = require("./notificationService");
+const { ensureTrackVisible, getProjectRole, httpError } = require("./accessService");
+const { withResolvedUrls } = require("./storageService");
+const { PUBLIC_USER_SELECT } = require("../utils/publicUser");
+const { validateContent } = require("./commentService");
+
+const MAX_POST_LENGTH = 1000;
+const PLAY_DEDUPE_MS = 30 * 1000;
+
+// Esconde referências a itens privados (projeto, faixa, playlist) em posts.
+function maskPrivateRefs(post) {
+  return {
+    ...post,
+    project: post.project && post.project.isPublic === false ? null : post.project,
+    track: post.track && post.track.isPublic === false ? null : post.track,
+    playlist: post.playlist && post.playlist.isPublic === false ? null : post.playlist,
+  };
+}
 
 async function getFollowingIds(userId) {
   const follows = await prisma.follow.findMany({
@@ -91,12 +108,15 @@ async function listProjectPosts(userId) {
     orderBy: { createdAt: "desc" },
   });
 
-  return posts.map((post) => ({
-    ...post,
-    liked: post.likes.length > 0,
-    saved: post.saves.length > 0,
-    isFollowing: followingSet.has(post.project?.ownerId),
-  }));
+  return Promise.all(
+    posts.map(async (post) => ({
+      ...post,
+      project: post.project ? { ...post.project, files: await withResolvedUrls(post.project.files) } : post.project,
+      liked: post.likes.length > 0,
+      saved: post.saves.length > 0,
+      isFollowing: followingSet.has(post.project?.ownerId),
+    }))
+  );
 }
 
 async function listSocialPosts(userId) {
@@ -107,9 +127,9 @@ async function listSocialPosts(userId) {
     where: { authorId: { in: authorIds } },
     include: {
       author: { select: { id: true, name: true, username: true, avatarUrl: true } },
-      project: { select: { id: true, name: true } },
-  track: { select: { id: true, title: true, projectId: true } },
-      playlist: { select: { id: true, name: true } },
+      project: { select: { id: true, name: true, isPublic: true } },
+      track: { select: { id: true, title: true, projectId: true, isPublic: true } },
+      playlist: { select: { id: true, name: true, isPublic: true } },
       likes: { where: { userId }, select: { id: true } },
       saves: { where: { userId }, select: { id: true } },
       _count: { select: { likes: true, comments: true, saves: true } },
@@ -118,18 +138,42 @@ async function listSocialPosts(userId) {
   });
 
   return posts.map((post) => ({
-    ...post,
+    ...maskPrivateRefs(post),
     liked: post.likes.length > 0,
     saved: post.saves.length > 0,
   }));
 }
 
-async function createSocialPost(userId, payload) {
+// Só dá para citar num post o que é público ou é seu.
+async function assertCanReference({ userId, projectId, trackId, playlistId }) {
+  if (projectId) {
+    const project = await prisma.project.findUnique({ where: { id: projectId }, select: { ownerId: true, isPublic: true } });
+    if (!project || (!project.isPublic && project.ownerId !== userId)) throw httpError(404, "Projeto não encontrado");
+  }
+  if (trackId) {
+    const track = await prisma.track.findUnique({ where: { id: trackId }, select: { isPublic: true, projectId: true } });
+    if (!track) throw httpError(404, "Faixa não encontrada");
+    if (!track.isPublic) {
+      const { role } = await getProjectRole(userId, track.projectId);
+      if (role !== "owner") throw httpError(404, "Faixa não encontrada");
+    }
+  }
+  if (playlistId) {
+    const playlist = await prisma.playlist.findUnique({ where: { id: playlistId }, select: { creatorId: true, isPublic: true } });
+    if (!playlist || (!playlist.isPublic && playlist.creatorId !== userId)) throw httpError(404, "Playlist não encontrada");
+  }
+}
+
+async function createSocialPost(userId, payload = {}) {
   const { content, projectId, trackId, playlistId } = payload;
+  if (typeof content !== "string" || !content.trim()) throw httpError(400, "Escreva algo no post");
+  if (content.length > MAX_POST_LENGTH) throw httpError(400, `Post com no máximo ${MAX_POST_LENGTH} caracteres`);
+  await assertCanReference({ userId, projectId, trackId, playlistId });
+
   return prisma.socialPost.create({
     data: {
       authorId: userId,
-      content,
+      content: content.trim(),
       projectId: projectId || null,
       trackId: trackId || null,
       playlistId: playlistId || null,
@@ -176,7 +220,7 @@ async function likeSocialPost(postId, userId) {
 
 async function commentSocialPost(postId, userId, content) {
   const comment = await prisma.socialPostComment.create({
-    data: { postId, userId, content },
+    data: { postId, userId, content: validateContent(content) },
     include: {
       user: { select: { id: true, name: true, username: true, avatarUrl: true } },
     },
@@ -259,7 +303,8 @@ async function listPlaylists(userId) {
   }));
 }
 
-async function getTrack(trackId) {
+async function getTrack(trackId, viewerId) {
+  await ensureTrackVisible(trackId, viewerId);
   return prisma.track.findUnique({
     where: { id: trackId },
     include: {
@@ -272,7 +317,7 @@ async function getTrack(trackId) {
           owner: { select: { id: true, name: true, username: true, avatarUrl: true } },
         },
       },
-      comments: { include: { user: true } },
+      comments: { include: { user: { select: PUBLIC_USER_SELECT } }, orderBy: { createdAt: "asc" } },
       _count: { select: { likes: true, comments: true, plays: true } },
     },
   });
@@ -296,6 +341,7 @@ async function updateTrackTitle(trackId, userId, title) {
 }
 
 async function likeTrack(trackId, userId) {
+  await ensureTrackVisible(trackId, userId);
   const existing = await prisma.trackLike.findFirst({ where: { trackId, userId } });
   if (existing) {
     await prisma.trackLike.delete({ where: { id: existing.id } });
@@ -327,6 +373,7 @@ async function likeTrack(trackId, userId) {
 }
 
 async function saveTrack(trackId, userId) {
+  await ensureTrackVisible(trackId, userId);
   const existing = await prisma.trackSave.findUnique({ where: { trackId_userId: { trackId, userId } } });
   if (existing) return existing;
   const save = await prisma.trackSave.create({ data: { trackId, userId } });
@@ -356,6 +403,8 @@ async function unsaveTrack(trackId, userId) {
 }
 
 async function savePlaylist(playlistId, userId) {
+  const target = await prisma.playlist.findUnique({ where: { id: playlistId }, select: { isPublic: true, creatorId: true } });
+  if (!target || (!target.isPublic && target.creatorId !== userId)) throw httpError(404, "Playlist não encontrada");
   const existing = await prisma.playlistSave.findUnique({
     where: { playlistId_userId: { playlistId, userId } },
   });
@@ -384,8 +433,10 @@ async function unsavePlaylist(playlistId, userId) {
 }
 
 async function addTrackComment(trackId, userId, content) {
+  await ensureTrackVisible(trackId, userId);
   const comment = await prisma.trackComment.create({
-    data: { trackId, userId, content },
+    data: { trackId, userId, content: validateContent(content) },
+    include: { user: { select: PUBLIC_USER_SELECT } },
   });
 
   const [actor, track] = await Promise.all([
@@ -409,7 +460,13 @@ async function addTrackComment(trackId, userId, content) {
   return comment;
 }
 
+// Conta no máximo um play por usuário/faixa a cada 30s, para ninguém inflar números.
 async function addTrackPlay(trackId, userId) {
+  await ensureTrackVisible(trackId, userId);
+  const recent = await prisma.trackPlay.findFirst({
+    where: { trackId, userId, createdAt: { gte: new Date(Date.now() - PLAY_DEDUPE_MS) } },
+  });
+  if (recent) return recent;
   return prisma.trackPlay.create({
     data: { trackId, userId },
   });

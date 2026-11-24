@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PlanTier {
+  free
+  premium
+}
+
 enum ThemePreference {
   light
   dark
@@ -104,6 +109,10 @@ model User {
   socialComments SocialPostComment[]
   eventsCreated ProjectEvent[] @relation("EventCreator")
   eventParticipations ProjectEventParticipant[]
+  conversationsAsUser1 Conversation[] @relation("ConversationUser1")
+  conversationsAsUser2 Conversation[] @relation("ConversationUser2")
+  messagesSent         Message[]      @relation("MessageSender")
+  subscription         Subscription?
 }
 
 model RefreshToken {
@@ -226,6 +235,7 @@ model FileAsset {
   type       String
   url        String
   storageKey String
+  sizeBytes  BigInt       @default(0)
   createdAt  DateTime     @default(now())
 
   versions   FileVersion[]
@@ -399,6 +409,31 @@ model TrackPlay {
   createdAt DateTime @default(now())
 }
 
+model Conversation {
+  id        String    @id @default(cuid())
+  user1Id   String
+  user1     User      @relation("ConversationUser1", fields: [user1Id], references: [id])
+  user2Id   String
+  user2     User      @relation("ConversationUser2", fields: [user2Id], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  messages  Message[]
+
+  @@unique([user1Id, user2Id])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+  content        String
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+}
+
 model Notification {
   id        String           @id @default(cuid())
   userId    String
@@ -410,4 +445,30 @@ model Notification {
   link      String?
   readAt    DateTime?
   createdAt DateTime         @default(now())
+}
+
+model Plan {
+  id                         String         @id @default(cuid())
+  tier                       PlanTier       @unique
+  maxProjects                Int
+  maxCollaboratorsPerProject Int
+  maxTracks                  Int
+  maxStorageBytes            BigInt
+  maxPlaylists               Int
+  createdAt                  DateTime       @default(now())
+
+  subscriptions              Subscription[]
+}
+
+model Subscription {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id])
+  planId    String
+  plan      Plan      @relation(fields: [planId], references: [id])
+  status    String    @default("active")
+  startedAt DateTime  @default(now())
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }

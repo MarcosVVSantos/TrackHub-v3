@@ -296,6 +296,8 @@ export default function Landing() {
             <Link to="/feed" className="transition hover:text-brand-primary">Feed público</Link>
             <Link to="/login" className="transition hover:text-brand-primary">Entrar</Link>
             <Link to="/register" className="transition hover:text-brand-primary">Cadastrar</Link>
+            <Link to="/termos" className="transition hover:text-brand-primary">Termos</Link>
+            <Link to="/privacidade" className="transition hover:text-brand-primary">Privacidade</Link>
           </div>
         </div>
       </footer>

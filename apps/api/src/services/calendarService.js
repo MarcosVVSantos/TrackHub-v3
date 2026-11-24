@@ -1,6 +1,38 @@
 const prisma = require("../lib/prisma");
 const { createNotification } = require("./notificationService");
-const { ensureProjectMember } = require("./accessService");
+const { ensureProjectMember, ensureProjectRole, httpError } = require("./accessService");
+
+function parseEventInput({ title, description, startsAt, endsAt }, { partial = false } = {}) {
+  const data = {};
+  if (title !== undefined || !partial) {
+    if (typeof title !== "string" || !title.trim() || title.trim().length > 120) {
+      throw httpError(400, "Título do evento obrigatório, com até 120 caracteres");
+    }
+    data.title = title.trim();
+  }
+  if (description !== undefined) {
+    if (description !== null && (typeof description !== "string" || description.length > 2000)) {
+      throw httpError(400, "Descrição com no máximo 2000 caracteres");
+    }
+    data.description = description || null;
+  }
+  if (startsAt !== undefined || !partial) {
+    const start = new Date(startsAt);
+    if (Number.isNaN(start.getTime())) throw httpError(400, "Data de início inválida");
+    data.startsAt = start;
+  }
+  if (endsAt !== undefined) {
+    if (endsAt) {
+      const end = new Date(endsAt);
+      if (Number.isNaN(end.getTime())) throw httpError(400, "Data de fim inválida");
+      if (data.startsAt && end < data.startsAt) throw httpError(400, "O fim precisa ser depois do início");
+      data.endsAt = end;
+    } else {
+      data.endsAt = null;
+    }
+  }
+  return data;
+}
 
 async function getCalendarProjectIds(userId) {
   const [owned, shared] = await Promise.all([
@@ -88,9 +120,10 @@ async function listProjectEvents(userId, projectId) {
   });
 }
 
-async function createProjectEvent(userId, projectId, payload) {
-  await ensureProjectMember(userId, projectId);
-  const { title, description, startsAt, endsAt, participantIds } = payload;
+async function createProjectEvent(userId, projectId, payload = {}) {
+  await ensureProjectRole(userId, projectId, "editor");
+  const { participantIds } = payload;
+  const input = parseEventInput(payload);
 
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) {
@@ -111,10 +144,10 @@ async function createProjectEvent(userId, projectId, payload) {
   const event = await prisma.projectEvent.create({
     data: {
       projectId,
-      title,
-      description: description || null,
-      startsAt: new Date(startsAt),
-      endsAt: endsAt ? new Date(endsAt) : null,
+      title: input.title,
+      description: input.description ?? null,
+      startsAt: input.startsAt,
+      endsAt: input.endsAt ?? null,
       createdById: userId,
       participants: {
         createMany: {
@@ -145,9 +178,14 @@ async function createProjectEvent(userId, projectId, payload) {
   return event;
 }
 
-async function updateProjectEvent(userId, projectId, eventId, payload) {
-  await ensureProjectMember(userId, projectId);
-  const { title, description, startsAt, endsAt, participantIds } = payload;
+async function updateProjectEvent(userId, projectId, eventId, payload = {}) {
+  await ensureProjectRole(userId, projectId, "editor");
+  const { participantIds } = payload;
+  const input = parseEventInput(payload, { partial: true });
+
+  // O evento precisa ser DESTE projeto (antes dava para editar eventos de qualquer projeto).
+  const existingEvent = await prisma.projectEvent.findFirst({ where: { id: eventId, projectId } });
+  if (!existingEvent) throw httpError(404, "Evento não encontrado");
 
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) {
@@ -167,12 +205,9 @@ async function updateProjectEvent(userId, projectId, eventId, payload) {
   }
 
   const updated = await prisma.projectEvent.update({
-    where: { id: eventId },
+    where: { id: existingEvent.id },
     data: {
-      title,
-      description: description ?? null,
-      startsAt: startsAt ? new Date(startsAt) : undefined,
-      endsAt: endsAt ? new Date(endsAt) : null,
+      ...input,
       participants: participants
         ? {
             deleteMany: {},
@@ -243,7 +278,7 @@ async function inviteCalendarShare(userId, projectId, memberId) {
 
 async function acceptCalendarShare(userId, projectId) {
   const member = await prisma.projectMember.findFirst({
-    where: { projectId, userId, status: "accepted" },
+    where: { projectId, userId, status: "accepted", calendarShareStatus: "pending" },
     include: { project: true },
   });
 
@@ -271,7 +306,7 @@ async function acceptCalendarShare(userId, projectId) {
 
 async function declineCalendarShare(userId, projectId) {
   const member = await prisma.projectMember.findFirst({
-    where: { projectId, userId, status: "accepted" },
+    where: { projectId, userId, status: "accepted", calendarShareStatus: "pending" },
     include: { project: true },
   });
 

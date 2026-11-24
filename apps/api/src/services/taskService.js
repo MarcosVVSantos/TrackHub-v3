@@ -1,5 +1,7 @@
 const prisma = require("../lib/prisma");
-const { ensureProjectMember } = require("./accessService");
+const { ensureProjectMember, ensureProjectRole, httpError } = require("./accessService");
+
+const FLAGS = ["none", "attention", "blocked"];
 
 async function listTasks(userId, projectId) {
   await ensureProjectMember(userId, projectId);
@@ -9,14 +11,23 @@ async function listTasks(userId, projectId) {
   });
 }
 
-async function addTask(userId, projectId, data) {
-  await ensureProjectMember(userId, projectId);
+async function addTask(userId, projectId, data = {}) {
+  await ensureProjectRole(userId, projectId, "editor");
+  const { title, description, flag = "none" } = data;
+  if (typeof title !== "string" || !title.trim() || title.trim().length > 200) {
+    throw httpError(400, "Título da tarefa obrigatório, com até 200 caracteres");
+  }
+  if (description != null && (typeof description !== "string" || description.length > 2000)) {
+    throw httpError(400, "Descrição com no máximo 2000 caracteres");
+  }
+  if (!FLAGS.includes(flag)) throw httpError(400, "Marcação inválida");
+
   return prisma.taskCard.create({
     data: {
       projectId,
-      title: data.title,
-      description: data.description,
-      flag: data.flag || "none",
+      title: title.trim(),
+      description: description || null,
+      flag,
     },
   });
 }

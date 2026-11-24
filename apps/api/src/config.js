@@ -12,4 +12,13 @@ const config = {
   rootDir: path.resolve(__dirname, ".."),
 };
 
+if (process.env.NODE_ENV === "production") {
+  const missing = ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "DATABASE_URL"].filter(
+    (name) => !process.env[name]
+  );
+  if (missing.length) {
+    throw new Error(`Variáveis de ambiente obrigatórias ausentes: ${missing.join(", ")}`);
+  }
+}
+
 module.exports = config;

@@ -1,0 +1,6 @@
+# Migrations do Prisma sempre com LF: o checksum que o Prisma guarda no banco
+# muda se a quebra de linha mudar entre Windows e Linux.
+apps/api/prisma/migrations/** text eol=lf
+
+# Workflows do GitHub Actions rodam em Linux.
+.github/** text eol=lf

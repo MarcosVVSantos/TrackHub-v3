@@ -10,6 +10,10 @@ import Profile from "./pages/Profile";
 import Explore from "./pages/Explore";
 import Calendar from "./pages/Calendar";
 import Landing from "./pages/Landing";
+import Chat from "./pages/Chat";
+import Playlists from "./pages/Playlists";
+import PlaylistDetail from "./pages/PlaylistDetail";
+import { Terms, Privacy } from "./pages/Legal";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Header from "./components/Header";
 import GlobalPlayer from "./components/GlobalPlayer";
@@ -32,6 +36,8 @@ function App() {
         <Route path="/" element={!loading && user ? <Navigate to="/dashboard" replace /> : <Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/termos" element={<Terms />} />
+        <Route path="/privacidade" element={<Privacy />} />
         <Route
           path="/dashboard"
           element={
@@ -81,6 +87,16 @@ function App() {
           }
         />
         <Route path="/feed" element={<Feed />} />
+        <Route path="/playlists" element={<ProtectedRoute><Playlists /></ProtectedRoute>} />
+        <Route path="/playlists/:id" element={<ProtectedRoute><PlaylistDetail /></ProtectedRoute>} />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/explore"
           element={

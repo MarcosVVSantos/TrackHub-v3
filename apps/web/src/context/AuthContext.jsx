@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiRequest, clearTokens, getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from "../api/client";
+import { identify, resetAnalytics } from "../lib/analytics";
+import { setMonitoringUser } from "../lib/monitoring";
+import { apiRequest, revokeSession, clearTokens, getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -42,8 +44,15 @@ export function AuthProvider({ children }) {
     setUser(data.user);
   }
 
+  useEffect(() => {
+    identify(user);
+    setMonitoringUser(user);
+  }, [user]);
+
   function logout() {
+    revokeSession();
     clearTokens();
+    resetAnalytics();
     setUser(null);
   }
 

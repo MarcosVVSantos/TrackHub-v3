@@ -12,6 +12,8 @@ import {
   Music,
   Layers,
   Camera,
+  Plus,
+  ListMusic,
 } from "lucide-react";
 import { API_URL, apiRequest } from "../api/client";
 import { useAuth } from "../context/AuthContext";
@@ -483,14 +485,24 @@ function Profile() {
 
       {!tabLoading && tab === "playlists" && (
         <div className="space-y-4">
+          {isOwner && (
+            <div className="flex justify-end">
+              <Link to="/playlists" className="btn-primary text-sm">
+                <ListMusic size={15} />
+                Gerenciar playlists
+              </Link>
+            </div>
+          )}
           {playlists.length === 0 ? (
-            <EmptyState message="Este usuário ainda não compartilhou playlists." />
+            <EmptyState message={isOwner ? "Você ainda não tem playlists públicas." : "Este usuário ainda não compartilhou playlists."} />
           ) : (
             playlists.map((playlist) => (
               <div key={playlist.id} className="card space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-base font-semibold text-gray-800 dark:text-brand-text">{playlist.name}</p>
+                    <Link to={`/playlists/${playlist.id}`} className="text-base font-semibold text-gray-800 dark:text-brand-text hover:underline">
+                      {playlist.name}
+                    </Link>
                     <p className="text-xs text-gray-400 dark:text-brand-textMuted">
                       {playlist._count?.tracks || 0} faixas
                     </p>

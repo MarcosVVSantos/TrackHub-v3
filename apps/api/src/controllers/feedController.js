@@ -47,7 +47,7 @@ async function createSocial(req, res, next) {
 
 async function getTrack(req, res, next) {
   try {
-    const track = await feedService.getTrack(req.params.id);
+    const track = await feedService.getTrack(req.params.id, req.user?.sub);
     res.json(track);
   } catch (error) {
     next(error);
