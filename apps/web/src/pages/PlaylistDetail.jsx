@@ -40,10 +40,10 @@ function EditableField({ value, onSave, multiline = false, className = "" }) {
             if (e.key === "Escape") setEditing(false);
           }}
         />
-        <button onClick={handleSave} disabled={loading} className="text-green-500 hover:text-green-600">
+        <button onClick={handleSave} disabled={loading} className="text-stage-finished hover:text-stage-finished">
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
         </button>
-        <button onClick={() => setEditing(false)} className="text-gray-400 hover:text-gray-600">
+        <button onClick={() => setEditing(false)} className="text-th-muted hover:text-th-text2">
           <X size={14} />
         </button>
       </div>
@@ -55,7 +55,7 @@ function EditableField({ value, onSave, multiline = false, className = "" }) {
       onClick={() => { setDraft(value || ""); setEditing(true); }}
       className={`text-left hover:underline decoration-dashed underline-offset-2 ${className}`}
     >
-      {value || <span className="text-gray-400 italic">Adicionar descrição</span>}
+      {value || <span className="text-th-muted italic">Adicionar descrição</span>}
     </button>
   );
 }
@@ -64,36 +64,36 @@ function TrackRow({ entry, index, isOwner, isPlaying, onPlay, onRemove }) {
   const track = entry.track;
 
   return (
-    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition group ${isPlaying ? "bg-purple-50 dark:bg-purple-900/20" : "hover:bg-gray-50 dark:hover:bg-white/5"}`}>
+    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition group ${isPlaying ? "bg-th-raised " : "hover:bg-th-raised "}`}>
       {isOwner && (
-        <GripVertical size={14} className="text-gray-300 dark:text-gray-600 shrink-0 cursor-grab" />
+        <GripVertical size={14} className="text-th-muted shrink-0 cursor-grab" />
       )}
-      <span className="text-xs text-gray-400 w-5 text-right shrink-0">{index + 1}</span>
+      <span className="text-xs text-th-muted w-5 text-right shrink-0">{index + 1}</span>
 
       <button
         onClick={() => onPlay(entry)}
         className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition ${
           isPlaying
-            ? "bg-purple-600 text-white"
-            : "bg-gray-100 dark:bg-white/10 text-gray-500 group-hover:bg-purple-100 group-hover:text-purple-600 dark:group-hover:bg-purple-900/30"
+            ? "bg-th-lilac text-th-bg"
+            : "bg-th-raised  text-th-muted group-hover:bg-th-raised group-hover:text-th-lilac "
         }`}
       >
         {isPlaying ? <Pause size={13} /> : <Play size={13} />}
       </button>
 
-      <div className="h-9 w-9 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-white/10 flex items-center justify-center">
+      <div className="h-9 w-9 rounded-lg overflow-hidden shrink-0 bg-th-raised flex items-center justify-center">
         {track.project?.coverUrl ? (
           <img src={track.project.coverUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <Music size={14} className="text-gray-400" />
+          <Music size={14} className="text-th-muted" />
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${isPlaying ? "text-purple-700 dark:text-purple-300" : "text-gray-900 dark:text-brand-text"}`}>
+        <p className={`text-sm font-medium truncate ${isPlaying ? "text-th-lilac " : "text-th-text "}`}>
           {track.title}
         </p>
-        <p className="text-xs text-gray-400 truncate">
+        <p className="text-xs text-th-muted truncate">
           <Link to={`/projects/${track.project?.id}`} className="hover:underline">
             {track.project?.name}
           </Link>
@@ -107,7 +107,7 @@ function TrackRow({ entry, index, isOwner, isPlaying, onPlay, onRemove }) {
       {isOwner && (
         <button
           onClick={() => onRemove(track.id)}
-          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition p-1"
+          className="opacity-0 group-hover:opacity-100 text-th-muted hover:text-th-danger transition p-1"
         >
           <Trash2 size={14} />
         </button>
@@ -189,19 +189,32 @@ export default function PlaylistDetail() {
     });
   }
 
+  // Toca a playlist inteira em sequência (fila do player).
+  function handlePlayAll() {
+    const queue = playlist.tracks.map(({ track }) => ({
+      id: track.id,
+      title: track.title,
+      subtitle: track.project?.owner?.name,
+      audioUrl: track.audioUrl,
+      coverUrl: track.project?.coverUrl,
+      projectId: track.project?.id,
+    }));
+    player.playQueue(queue, 0);
+  }
+
   if (loading) {
     return (
-      <div className="mx-auto max-w-3xl p-6 space-y-4">
-        <div className="h-8 w-48 bg-gray-200 dark:bg-white/10 rounded animate-pulse" />
-        <div className="h-4 w-64 bg-gray-100 dark:bg-white/5 rounded animate-pulse" />
+      <div className="mx-auto w-full max-w-[1240px] px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9 space-y-4">
+        <div className="h-8 w-48 bg-th-line2 rounded animate-pulse" />
+        <div className="h-4 w-64 bg-th-raised rounded animate-pulse" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="mx-auto max-w-3xl p-6">
-        <p className="text-red-500">{error}</p>
+      <div className="mx-auto w-full max-w-[1240px] px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
+        <p className="text-th-danger">{error}</p>
       </div>
     );
   }
@@ -209,18 +222,18 @@ export default function PlaylistDetail() {
   if (!playlist) return null;
 
   return (
-    <div className="mx-auto max-w-3xl p-6 space-y-6">
+    <div className="mx-auto w-full max-w-[1240px] px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+        <button onClick={() => navigate(-1)} className="text-th-muted hover:text-th-text2">
           <ArrowLeft size={20} />
         </button>
-        <span className="text-sm text-gray-400">Playlists</span>
+        <span className="text-sm text-th-muted">Playlists</span>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-5">
         {/* Capa */}
-        <div className="h-36 w-36 rounded-xl overflow-hidden bg-gray-100 dark:bg-white/10 shrink-0 flex items-center justify-center">
+        <div className="h-36 w-36 rounded-xl overflow-hidden bg-th-raised shrink-0 flex items-center justify-center">
           {playlist.tracks?.[0]?.track?.project?.coverUrl ? (
             <img
               src={playlist.tracks[0].track.project.coverUrl}
@@ -228,7 +241,7 @@ export default function PlaylistDetail() {
               className="w-full h-full object-cover"
             />
           ) : (
-            <Music size={32} className="text-gray-300 dark:text-gray-600" />
+            <Music size={32} className="text-th-muted" />
           )}
         </div>
 
@@ -238,13 +251,13 @@ export default function PlaylistDetail() {
             <EditableField
               value={playlist.name}
               onSave={(v) => handleUpdateField("name", v)}
-              className="text-2xl font-bold text-gray-900 dark:text-brand-text w-full"
+              className="text-2xl font-bold text-th-text w-full"
             />
           ) : (
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-brand-text">{playlist.name}</h1>
+            <h1 className="text-2xl font-bold text-th-text">{playlist.name}</h1>
           )}
 
-          <div className="flex items-center gap-2 text-xs text-gray-400">
+          <div className="flex items-center gap-2 text-xs text-th-muted">
             {playlist.isPublic
               ? <><Globe size={12} /> Pública</>
               : <><Lock size={12} /> Privada</>
@@ -262,11 +275,20 @@ export default function PlaylistDetail() {
               value={playlist.description}
               onSave={(v) => handleUpdateField("description", v)}
               multiline
-              className="text-sm text-gray-500 dark:text-gray-400 w-full"
+              className="text-sm text-th-muted w-full"
             />
           ) : playlist.description ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">{playlist.description}</p>
+            <p className="text-sm text-th-muted">{playlist.description}</p>
           ) : null}
+
+          {playlist.tracks.length > 0 && (
+            <div className="pt-2">
+              <button className="btn-primary" type="button" onClick={handlePlayAll}>
+                <Play size={14} fill="currentColor" />
+                Tocar tudo
+              </button>
+            </div>
+          )}
 
           {isOwner && (
             <div className="flex items-center gap-2 pt-2">
@@ -282,7 +304,7 @@ export default function PlaylistDetail() {
                 {playlist.isPublic ? "Tornar privada" : "Tornar pública"}
               </button>
               <button
-                className="btn-secondary text-sm text-red-500 hover:text-red-600"
+                className="btn-secondary text-sm text-th-danger hover:text-th-danger"
                 onClick={handleDeletePlaylist}
                 disabled={deletingPlaylist}
               >
@@ -298,8 +320,8 @@ export default function PlaylistDetail() {
       <div className="space-y-1">
         {playlist.tracks.length === 0 ? (
           <div className="flex flex-col items-center py-12 gap-3 text-center">
-            <Music size={32} className="text-gray-300 dark:text-gray-600" />
-            <p className="text-sm text-gray-400">
+            <Music size={32} className="text-th-muted" />
+            <p className="text-sm text-th-muted">
               {isOwner
                 ? "Nenhuma track ainda. Clique em \"Adicionar tracks\" para começar."
                 : "Esta playlist está vazia."}

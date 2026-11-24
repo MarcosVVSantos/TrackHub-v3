@@ -2,6 +2,7 @@ const projectService = require("../services/projectService");
 const commentService = require("../services/commentService");
 const fileService = require("../services/fileService");
 const taskService = require("../services/taskService");
+const fileCommentService = require("../services/fileCommentService");
 const storage = require("../services/storageService");
 const { validateImage, validateProjectFile } = require("../utils/fileType");
 
@@ -194,6 +195,7 @@ async function addFile(req, res, next) {
       uploaderId: req.user.sub,
       file: { ...req.file, mimetype: type.mime, url, filename: key },
       versionName: req.body.version,
+      meta: { durationSec: req.body.durationSec, peaks: req.body.peaks },
     });
     res.status(201).json(file);
   } catch (error) {
@@ -230,7 +232,55 @@ async function addTask(req, res, next) {
   }
 }
 
+async function updateTask(req, res, next) {
+  try {
+    res.json(await taskService.updateTask(req.user.sub, req.params.id, req.params.taskId, req.body));
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteTask(req, res, next) {
+  try {
+    res.json(await taskService.deleteTask(req.user.sub, req.params.id, req.params.taskId));
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function listFileComments(req, res, next) {
+  try {
+    res.json(await fileCommentService.listFileComments(req.user.sub, req.params.id, req.params.fileId));
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function addFileComment(req, res, next) {
+  try {
+    const comment = await fileCommentService.addFileComment(req.user.sub, req.params.id, req.params.fileId, req.body);
+    res.status(201).json(comment);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteFileComment(req, res, next) {
+  try {
+    res.json(
+      await fileCommentService.deleteFileComment(req.user.sub, req.params.id, req.params.fileId, req.params.commentId)
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
+  updateTask,
+  deleteTask,
+  listFileComments,
+  addFileComment,
+  deleteFileComment,
   listProjects,
   getProject,
   createProject,

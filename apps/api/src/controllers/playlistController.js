@@ -9,6 +9,14 @@ async function createPlaylist(req, res, next) {
   }
 }
 
+async function listAutoPlaylists(req, res, next) {
+  try {
+    res.json(await playlistService.listAutoPlaylists(req.user.sub));
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function listMyPlaylists(req, res, next) {
   try {
     const playlists = await playlistService.listMyPlaylists(req.user.sub);
@@ -84,6 +92,7 @@ async function searchPublicTracks(req, res, next) {
 }
 
 module.exports = {
+  listAutoPlaylists,
   createPlaylist,
   listMyPlaylists,
   getPlaylist,

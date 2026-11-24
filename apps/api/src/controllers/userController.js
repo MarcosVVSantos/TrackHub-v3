@@ -46,14 +46,28 @@ async function uploadAvatar(req, res, next) {
 
 async function explore(req, res, next) {
   try {
-    const data = await userService.listExplore(req.user.sub, req.query.q || "");
+    const data = await userService.listExplore(req.user.sub, {
+      q: req.query.q || "",
+      role: req.query.role || "",
+      genre: req.query.genre || "",
+      open: req.query.open === "true",
+    });
     res.json(data);
   } catch (error) {
     next(error);
   }
 }
 
+async function suggestions(req, res, next) {
+  try {
+    res.json(await userService.listSuggestions(req.user.sub, 6));
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
+  suggestions,
   getMe,
   updateMe,
   uploadAvatar,

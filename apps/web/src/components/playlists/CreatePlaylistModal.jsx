@@ -35,11 +35,11 @@ export default function CreatePlaylistModal({ open, onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white dark:bg-brand-darkSecondary p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl bg-th-surface p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-brand-primary">Nova playlist</h3>
-            <p className="text-xs text-gray-500">Curate tracks de projetos públicos</p>
+            <h3 className="text-lg font-semibold text-th-lilac">Nova playlist</h3>
+            <p className="text-xs text-th-muted">Curate tracks de projetos públicos</p>
           </div>
           <button type="button" onClick={handleClose}>
             <X size={18} />
@@ -72,7 +72,7 @@ export default function CreatePlaylistModal({ open, onClose, onCreated }) {
             <option value="private">Privada</option>
           </select>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-sm text-th-danger">{error}</p>}
 
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" className="btn-secondary" onClick={handleClose}>

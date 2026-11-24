@@ -54,5 +54,11 @@ router.get("/:id/comments", authenticate, controller.listComments);
 
 router.get("/:id/tasks", authenticate, controller.listTasks);
 router.post("/:id/tasks", authenticate, controller.addTask);
+router.patch("/:id/tasks/:taskId", authenticate, controller.updateTask);
+router.delete("/:id/tasks/:taskId", authenticate, controller.deleteTask);
+
+router.get("/:id/files/:fileId/comments", authenticate, controller.listFileComments);
+router.post("/:id/files/:fileId/comments", authenticate, controller.addFileComment);
+router.delete("/:id/files/:fileId/comments/:commentId", authenticate, controller.deleteFileComment);
 
 module.exports = router;

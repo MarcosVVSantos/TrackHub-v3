@@ -1,87 +1,88 @@
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import AuthLayout from "../components/layout/AuthLayout";
+import { ErrorNote } from "../components/ui/States";
 
-function Register() {
+const FIELDS = [
+  { id: "name", label: "Nome", autoComplete: "name" },
+  { id: "username", label: "Usuário", autoComplete: "username", hint: "3 a 30 caracteres: letras, números, ponto e underline" },
+  { id: "email", label: "E-mail", type: "email", autoComplete: "email" },
+  { id: "password", label: "Senha", type: "password", autoComplete: "new-password" },
+];
+
+export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: "", username: "", email: "", password: "" });
   const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
 
-  async function handleSubmit(event) {
+  async function submit(event) {
     event.preventDefault();
     setError("");
+    setSending(true);
     try {
       await register(form);
-      navigate("/dashboard");
+      navigate("/inicio");
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSending(false);
     }
   }
 
   return (
-  <div className="mx-auto mt-16 max-w-md rounded-2xl bg-white p-8 shadow-md dark:bg-brand-darkSecondary">
-      <h1 className="text-2xl font-semibold text-brand-primary">Criar conta</h1>
-      <p className="mt-1 text-sm text-gray-500">Comece a colaborar hoje</p>
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <input
-          className="input"
-          placeholder="Nome"
-          value={form.name}
-          onChange={(event) => setForm({ ...form, name: event.target.value })}
-          required
-        />
-        <input
-          className="input"
-          placeholder="Username"
-          value={form.username}
-          onChange={(event) => setForm({ ...form, username: event.target.value })}
-          required
-        />
-        <input
-          className="input"
-          placeholder="Email"
-          type="email"
-          value={form.email}
-          onChange={(event) => setForm({ ...form, email: event.target.value })}
-          required
-        />
-        <input
-          className="input"
-          placeholder="Senha"
-          type="password"
-          value={form.password}
-          onChange={(event) => setForm({ ...form, password: event.target.value })}
-          required
-        />
-        <label className="flex items-start gap-2 text-sm text-gray-500">
-          <input type="checkbox" className="mt-1" required />
+    <AuthLayout
+      title="Criar conta"
+      subtitle="Crie faixas junto com outros artistas."
+      footer={
+        <>
+          Já tem conta? <Link to="/login">Entrar</Link>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        {FIELDS.map((field) => (
+          <div key={field.id}>
+            <label className="label" htmlFor={`rg-${field.id}`}>
+              {field.label}
+            </label>
+            <input
+              id={`rg-${field.id}`}
+              className="input"
+              type={field.type || "text"}
+              autoComplete={field.autoComplete}
+              aria-describedby={field.hint ? `rg-${field.id}-hint` : undefined}
+              value={form[field.id]}
+              onChange={(event) => setForm({ ...form, [field.id]: event.target.value })}
+              required
+            />
+            {field.hint && (
+              <p id={`rg-${field.id}-hint`} className="mt-1 text-xs text-th-muted">
+                {field.hint}
+              </p>
+            )}
+          </div>
+        ))}
+        <label className="flex items-start gap-3 text-sm text-th-text2">
+          <input type="checkbox" className="mt-0.5 h-5 w-5 accent-[#D9B8E3]" required />
           <span>
             Li e aceito os{" "}
-            <Link className="text-brand-primary" to="/termos" target="_blank">
+            <Link to="/termos" target="_blank">
               Termos de uso
             </Link>{" "}
             e a{" "}
-            <Link className="text-brand-primary" to="/privacidade" target="_blank">
+            <Link to="/privacidade" target="_blank">
               Política de privacidade
             </Link>
           </span>
         </label>
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        <button className="btn-primary w-full" type="submit">
-          <UserPlus size={16} />
-          Criar conta
+        <ErrorNote>{error}</ErrorNote>
+        <button className="btn-primary w-full" type="submit" disabled={sending}>
+          {sending ? "Criando..." : "Criar conta"}
         </button>
       </form>
-      <p className="mt-4 text-sm text-gray-500">
-        Já tem conta?{" "}
-        <Link className="text-brand-primary" to="/login">
-          Entrar
-        </Link>
-      </p>
-    </div>
+    </AuthLayout>
   );
 }
-
-export default Register;

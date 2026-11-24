@@ -14,6 +14,10 @@ async function resolveUser(identifier) {
       avatarUrl: true,
       bio: true,
       isActive: true,
+      role: true,
+      genres: true,
+      city: true,
+      openToCollab: true,
     },
   });
 }

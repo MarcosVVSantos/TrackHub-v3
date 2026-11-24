@@ -10,8 +10,8 @@
     "lint": "echo \"No lint configured\"",
     "test": "node --test",
     "migrate:private-files": "node scripts/migrate-files-to-private.js",
-    "test:unit": "node --test test/security.test.js test/observability.test.js test/planLimits.test.js test/permissions.test.js",
-    "test:integration": "node --test --test-concurrency=1 test/collab.test.js test/dashboard.test.js test/explore.test.js test/feed.test.js test/notifications.test.js test/profile.test.js test/projects.test.js test/user.test.js",
+    "test:unit": "node --test test/security.test.js test/observability.test.js test/planLimits.test.js test/permissions.test.js test/features.test.js",
+    "test:integration": "node --test --test-concurrency=1 test/collab.test.js test/dashboard.test.js test/explore.test.js test/feed.test.js test/home.test.js test/notifications.test.js test/profile.test.js test/projects.test.js test/user.test.js",
     "migrate:deploy": "prisma migrate deploy",
     "db:check-drift": "prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url \"$SHADOW_DATABASE_URL\" --exit-code"
   },

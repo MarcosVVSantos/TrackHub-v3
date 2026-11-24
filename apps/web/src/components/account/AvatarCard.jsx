@@ -69,8 +69,8 @@ function AvatarCard({ user, onUploaded }) {
     <div className="card">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-brand-primary">Foto de perfil</h3>
-          <p className="text-xs text-gray-500">Escolha uma imagem profissional.</p>
+          <h3 className="text-sm font-semibold text-th-lilac">Foto de perfil</h3>
+          <p className="text-xs text-th-muted">Escolha uma imagem profissional.</p>
         </div>
       </div>
       <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row">
@@ -79,10 +79,10 @@ function AvatarCard({ user, onUploaded }) {
             <img
               src={preview || user.avatarUrl}
               alt={user?.name}
-              className="h-28 w-28 rounded-full border border-gray-200 object-cover"
+              className="h-28 w-28 rounded-full border border-th-line object-cover"
             />
           ) : (
-            <div className="flex h-28 w-28 items-center justify-center rounded-full bg-brand-accent/30 text-xl font-semibold text-brand-primary">
+            <div className="flex h-28 w-28 items-center justify-center rounded-full bg-th-accent/30 text-xl font-semibold text-th-lilac">
               {initials}
             </div>
           )}
@@ -104,8 +104,8 @@ function AvatarCard({ user, onUploaded }) {
             <Camera size={16} />
             Alterar foto
           </button>
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          {message && <p className="text-sm text-green-500">{message}</p>}
+          {error && <p className="text-sm text-th-danger">{error}</p>}
+          {message && <p className="text-sm text-stage-finished">{message}</p>}
         </div>
       </div>
     </div>

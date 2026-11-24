@@ -3,30 +3,78 @@
 @tailwind utilities;
 
 :root {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Inter Variable", "Inter", system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-th-bg text-th-text antialiased;
 }
 
 :focus-visible {
-  outline: 2px solid rgba(91, 22, 105, 0.6);
+  outline: 2px solid #aeb9de;
   outline-offset: 2px;
 }
 
-.dark :focus-visible {
-  outline-color: rgba(91, 22, 105, 0.8);
+/* Em @layer base para que classes como text-th-muted ou btn-primary possam sobrescrever */
+@layer base {
+  a {
+    @apply text-th-link hover:text-th-linkHover;
+  }
 }
 
-.btn-primary {
-  @apply inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-white transition hover:brightness-110 active:scale-[0.98] disabled:opacity-60;
+/* Em @layer components: classes utilitárias (p-0, pl-9, w-auto…) conseguem sobrescrever estas */
+@layer components {
+  /* Botão principal: branco sobre o fundo escuro, como no redesign */
+  .btn-primary {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[10px] bg-white px-4 text-[15px] font-semibold text-th-bg transition hover:bg-th-text2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[10px] border border-th-line2 bg-transparent px-4 text-[15px] text-th-text2 transition hover:border-th-hover hover:text-th-text active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg px-3 text-sm text-th-text2 transition hover:bg-th-surface hover:text-th-text disabled:opacity-50;
+  }
+
+  .btn-icon {
+    @apply inline-flex h-11 w-11 items-center justify-center rounded-[10px] border border-th-line bg-th-surface text-th-text2 transition hover:border-th-line2 hover:text-th-text;
+  }
+
+  .card {
+    @apply rounded-2xl border border-th-line bg-th-surface p-5;
+  }
+
+  .card-link {
+    @apply rounded-2xl border border-th-line bg-th-surface text-th-text no-underline transition hover:border-th-hover hover:text-th-text;
+  }
+
+  .input {
+    @apply min-h-[44px] w-full rounded-[10px] border border-th-line bg-th-surface px-3.5 text-sm text-th-text placeholder:text-th-muted focus:border-th-accent focus:outline-none focus:ring-2 focus:ring-th-accent/30;
+  }
+
+  textarea.input {
+    @apply py-2.5;
+  }
+
+  .label {
+    @apply mb-1.5 block text-[13px] font-medium text-th-text2;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-th-muted;
+  }
+
+  .chip {
+    @apply inline-flex min-h-[32px] items-center gap-1.5 rounded-full border border-th-line2 px-3 text-[13px] text-th-text2 transition hover:border-th-hover;
+  }
+
+  .chip[aria-pressed="true"] {
+    @apply border-th-text bg-th-text font-semibold text-th-bg;
+  }
 }
 
-.btn-secondary {
-  @apply inline-flex items-center gap-2 rounded-lg border border-brand-accent px-4 py-2 text-brand-primary transition hover:bg-brand-accent hover:text-white active:scale-[0.98] disabled:opacity-60 dark:border-brand-darkOutline dark:text-brand-textMuted dark:hover:bg-brand-primary dark:hover:text-white;
-}
-
-.card {
-  @apply rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-brand-darkOutline dark:bg-brand-darkSecondary;
-}
-
-.input {
-  @apply w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/30 dark:border-brand-darkOutline dark:bg-brand-darkSecondary dark:text-brand-text;
+.sr-only-focusable:not(:focus) {
+  @apply sr-only;
 }

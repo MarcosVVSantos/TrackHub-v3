@@ -19,17 +19,17 @@ function TrackRow({ track, onAdd, onRemove }) {
   }
 
   return (
-    <div className="flex items-center gap-3 py-2.5 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition">
-      <div className="h-10 w-10 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-white/10 flex items-center justify-center">
+    <div className="flex items-center gap-3 py-2.5 px-1 rounded-lg hover:bg-th-raised transition">
+      <div className="h-10 w-10 rounded-lg overflow-hidden shrink-0 bg-th-raised flex items-center justify-center">
         {track.project?.coverUrl ? (
           <img src={track.project.coverUrl} alt={track.project.name} className="h-full w-full object-cover" />
         ) : (
-          <Music size={16} className="text-gray-400" />
+          <Music size={16} className="text-th-muted" />
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 dark:text-brand-text truncate">{track.title}</p>
-        <p className="text-xs text-gray-400 truncate">
+        <p className="text-sm font-medium text-th-text truncate">{track.title}</p>
+        <p className="text-xs text-th-muted truncate">
           {track.project?.name} · {track.project?.owner?.name}
         </p>
       </div>
@@ -38,8 +38,8 @@ function TrackRow({ track, onAdd, onRemove }) {
         disabled={loading}
         className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition ${
           track.inPlaylist
-            ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600"
-            : "bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-purple-100 hover:text-purple-600 dark:hover:bg-purple-900/40"
+            ? "bg-th-raised  text-th-lilac"
+            : "bg-th-raised  text-th-muted hover:bg-th-raised hover:text-th-lilac "
         }`}
       >
         {loading ? (
@@ -113,11 +113,11 @@ export default function AddTrackModal({ open, playlistId, onClose, onChanged }) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-brand-darkSecondary shadow-xl flex flex-col max-h-[80vh]">
+      <div className="w-full max-w-lg rounded-2xl bg-th-surface shadow-xl flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <div>
-            <h3 className="text-lg font-semibold text-brand-primary">Adicionar tracks</h3>
-            <p className="text-xs text-gray-500">Projetos públicos de outros artistas</p>
+            <h3 className="text-lg font-semibold text-th-lilac">Adicionar tracks</h3>
+            <p className="text-xs text-th-muted">Projetos públicos de outros artistas</p>
           </div>
           <button type="button" onClick={onClose}>
             <X size={18} />
@@ -126,7 +126,7 @@ export default function AddTrackModal({ open, playlistId, onClose, onChanged }) 
 
         <div className="px-5 pb-3 shrink-0">
           <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-th-muted" />
             <input
               className="input pl-9"
               placeholder="Buscar por título, projeto ou artista..."
@@ -140,11 +140,11 @@ export default function AddTrackModal({ open, playlistId, onClose, onChanged }) 
         <div className="flex-1 overflow-y-auto px-5 pb-4">
           {loading && (
             <div className="flex justify-center py-8">
-              <Loader2 size={20} className="animate-spin text-gray-400" />
+              <Loader2 size={20} className="animate-spin text-th-muted" />
             </div>
           )}
           {!loading && tracks.length === 0 && (
-            <p className="text-center text-sm text-gray-400 py-8">
+            <p className="text-center text-sm text-th-muted py-8">
               {query ? "Nenhuma track encontrada." : "Nenhuma track pública disponível no momento."}
             </p>
           )}

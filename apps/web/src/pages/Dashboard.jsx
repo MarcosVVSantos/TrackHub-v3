@@ -42,7 +42,7 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl p-6">
+      <div className="mx-auto w-full max-w-[1240px] px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
         <Skeleton lines={10} />
       </div>
     );
@@ -50,8 +50,8 @@ function Dashboard() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-6xl p-6">
-        <div className="card flex flex-col gap-4 border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200">
+      <div className="mx-auto w-full max-w-[1240px] px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
+        <div className="card flex flex-col gap-4 border border-th-danger/30 bg-th-danger/10 text-th-danger">
           <p>{error}</p>
           <button className="btn-secondary w-fit" onClick={() => loadMetrics(period)}>
             Tentar novamente
@@ -66,11 +66,11 @@ function Dashboard() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
+    <div className="mx-auto w-full flex max-w-[1240px] flex-col gap-6 px-4 pt-7 sm:px-6 lg:px-10 lg:pt-9">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-brand-text">Dashboard</h1>
-          <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+          <h1 className="text-2xl font-semibold text-th-text">Dashboard</h1>
+          <p className="text-sm text-th-muted">
             Visão geral da sua produção e colaboração.
           </p>
         </div>
@@ -162,8 +162,8 @@ function Dashboard() {
       <div className="grid gap-4 lg:grid-cols-3">
         <ChartCard title="Versões enviadas" data={metrics.charts.versionsEvolution} />
         <div className="card flex flex-col justify-center gap-2 lg:col-span-2">
-          <p className="text-sm font-semibold text-gray-700 dark:text-brand-text">Resumo rápido</p>
-          <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+          <p className="text-sm font-semibold text-th-text">Resumo rápido</p>
+          <p className="text-sm text-th-muted">
             {`Seu desempenho nos ${metrics.period.label.toLowerCase()} mostra tendências claras de engajamento. Use os rankings abaixo para identificar o que está funcionando.`}
           </p>
         </div>
@@ -171,8 +171,8 @@ function Dashboard() {
 
       <div>
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-brand-text">Top content</h2>
-          <p className="text-sm text-gray-500 dark:text-brand-textMuted">
+          <h2 className="text-lg font-semibold text-th-text">Top content</h2>
+          <p className="text-sm text-th-muted">
             Destaques de performance por plays, curtidas e engajamento.
           </p>
         </div>

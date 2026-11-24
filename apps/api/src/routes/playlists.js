@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get("/mine", controller.listMyPlaylists);
+router.get("/auto", controller.listAutoPlaylists);
 router.get("/tracks/search", controller.searchPublicTracks);
 router.post("/", planGate("playlist"), controller.createPlaylist);
 router.get("/:id", controller.getPlaylist);

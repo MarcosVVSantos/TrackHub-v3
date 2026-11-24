@@ -7,10 +7,10 @@ function TrendBadge({ trend }) {
   const isDown = direction === "down";
   const Icon = isUp ? ArrowUpRight : isDown ? ArrowDownRight : Minus;
   const textColor = isUp
-    ? "text-emerald-500"
+    ? "text-stage-finished"
     : isDown
-    ? "text-rose-500"
-    : "text-gray-400";
+    ? "text-th-danger"
+    : "text-th-muted";
 
   return (
     <span className={`inline-flex items-center gap-1 text-xs font-medium ${textColor}`}>
@@ -25,20 +25,20 @@ function MetricCard({ title, value, subtitle, icon: Icon, tooltip, trend }) {
   return (
     <div className="card flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase text-gray-500 dark:text-brand-textMuted">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase text-th-muted">
           {Icon && <Icon size={16} />}
           {title}
         </div>
         {tooltip && (
-          <span className="text-gray-400" title={tooltip} aria-label={tooltip}>
+          <span className="text-th-muted" title={tooltip} aria-label={tooltip}>
             <Info size={14} />
           </span>
         )}
       </div>
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-2xl font-semibold text-brand-primary dark:text-brand-text">{formattedValue}</p>
-          {subtitle && <p className="mt-1 text-xs text-gray-500 dark:text-brand-textMuted">{subtitle}</p>}
+          <p className="text-2xl font-semibold text-th-lilac">{formattedValue}</p>
+          {subtitle && <p className="mt-1 text-xs text-th-muted">{subtitle}</p>}
         </div>
         <TrendBadge trend={trend} />
       </div>
@@ -46,4 +46,4 @@ function MetricCard({ title, value, subtitle, icon: Icon, tooltip, trend }) {
   );
 }
 
-export default MetricCard;
+export default MetricCard;

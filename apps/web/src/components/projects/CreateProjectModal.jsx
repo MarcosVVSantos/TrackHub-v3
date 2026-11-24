@@ -1,180 +1,132 @@
-import { useEffect, useMemo, useState } from "react";
-import { X, PlusCircle, Loader2 } from "lucide-react";
-import { apiRequest, getAccessToken } from "../../api/client";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { apiRequest } from "../../api/client";
+import Modal from "../ui/Modal";
+import { ErrorNote } from "../ui/States";
+import { STAGES } from "../../lib/format";
 
-const statusOptions = [
-  { value: "idea", label: "Ideia" },
-  { value: "in_progress", label: "Em andamento" },
-  { value: "production", label: "Produção" },
-  { value: "finished", label: "Finalizado" },
-];
+const GENRES = ["Trap", "R&B", "Boom bap", "Funk", "Pop", "Drill", "Rap", "MPB", "Lo-fi", "Eletrônica"];
 
-function CreateProjectModal({ open, onClose, onCreated, tagsSuggestions }) {
-  const [form, setForm] = useState({ name: "", description: "", status: "idea", isPublic: false });
-  const [tagInput, setTagInput] = useState("");
+export default function CreateProjectModal({ open, onClose, onCreated, defaultStatus = "idea" }) {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ name: "", description: "", status: defaultStatus, bpm: "" });
   const [tags, setTags] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!open) {
-      setForm({ name: "", description: "", status: "idea", isPublic: false });
-      setTagInput("");
-      setTags([]);
-      setError("");
-    }
-  }, [open]);
-
-  const suggested = useMemo(() => {
-    return (tagsSuggestions || []).filter(
-      (tag) => tag.toLowerCase().includes(tagInput.toLowerCase()) && !tags.includes(tag)
-    );
-  }, [tagsSuggestions, tagInput, tags]);
-
-  function handleTagKeyDown(event) {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      const value = tagInput.trim();
-      if (!value) return;
-      if (!tags.includes(value)) {
-        setTags((prev) => [...prev, value]);
-      }
-      setTagInput("");
-    }
-  }
-
-  function removeTag(tagToRemove) {
-    setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
+  function toggleTag(tag) {
+    setTags((current) => (current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag].slice(0, 10)));
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (form.isPublic) {
-      setError("Crie o projeto e envie uma capa antes de torná-lo público.");
-      return;
-    }
-    setLoading(true);
+    setSaving(true);
     setError("");
     try {
-      const token = getAccessToken();
-      await apiRequest("/projects", {
+      const project = await apiRequest("/projects", {
         method: "POST",
-        body: { ...form, tags },
-        token,
+        body: { ...form, bpm: form.bpm ? Number(form.bpm) : null, tags, isPublic: false },
       });
-      onCreated();
+      onCreated?.(project);
       onClose();
+      setForm({ name: "", description: "", status: defaultStatus, bpm: "" });
+      setTags([]);
+      navigate(`/projects/${project.id}`);
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-  <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl dark:bg-brand-darkSecondary">
-        <div className="flex items-center justify-between">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Novo projeto"
+      description="Comece pelo básico. Capa, parceiros e versões você adiciona depois."
+      size="lg"
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div>
+          <label htmlFor="np-name" className="label">
+            Nome da faixa
+          </label>
+          <input
+            id="np-name"
+            className="input"
+            required
+            maxLength={100}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Noite em SP"
+          />
+        </div>
+        <div>
+          <label htmlFor="np-desc" className="label">
+            Descrição <span className="text-th-muted">(opcional)</span>
+          </label>
+          <textarea
+            id="np-desc"
+            className="input min-h-[80px]"
+            maxLength={2000}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="Referências, clima, o que falta"
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <h3 className="text-lg font-semibold text-brand-primary">Novo projeto</h3>
-            <p className="text-xs text-gray-500">Crie um projeto sem perder o foco.</p>
+            <label htmlFor="np-status" className="label">
+              Etapa
+            </label>
+            <select id="np-status" className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+              {STAGES.map((stage) => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.label}
+                </option>
+              ))}
+            </select>
           </div>
-          <button type="button" onClick={onClose}>
-            <X size={18} />
+          <div>
+            <label htmlFor="np-bpm" className="label">
+              BPM <span className="text-th-muted">(opcional)</span>
+            </label>
+            <input
+              id="np-bpm"
+              className="input"
+              type="number"
+              min={40}
+              max={300}
+              value={form.bpm}
+              onChange={(e) => setForm({ ...form, bpm: e.target.value })}
+              placeholder="94"
+            />
+          </div>
+        </div>
+        <fieldset>
+          <legend className="label">Gêneros</legend>
+          <div className="flex flex-wrap gap-2">
+            {GENRES.map((genre) => (
+              <button key={genre} type="button" className="chip" aria-pressed={tags.includes(genre)} onClick={() => toggleTag(genre)}>
+                {genre}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <p className="text-[13px] text-th-muted">O projeto começa privado: só quem você convidar vê. Para publicar, envie uma capa na página do projeto.</p>
+        <ErrorNote>{error}</ErrorNote>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} className="btn-secondary">
+            Cancelar
+          </button>
+          <button type="submit" disabled={saving} className="btn-primary">
+            {saving ? "Criando…" : "Criar projeto"}
           </button>
         </div>
-        <form className="mt-4 grid gap-3" onSubmit={handleSubmit}>
-          <input
-            className="input"
-            placeholder="Nome do projeto"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-            required
-          />
-          <textarea
-            className="input"
-            placeholder="Descrição"
-            value={form.description}
-            onChange={(event) => setForm({ ...form, description: event.target.value })}
-          />
-          <select
-            className="input"
-            value={form.status}
-            onChange={(event) => setForm({ ...form, status: event.target.value })}
-          >
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input"
-            value={form.isPublic ? "public" : "private"}
-            onChange={(event) => setForm({ ...form, isPublic: event.target.value === "public" })}
-          >
-            <option value="private">Privado</option>
-            <option value="public">Público</option>
-          </select>
-          <div className="space-y-2">
-            <input
-              className="input"
-              placeholder="Digite e pressione Enter para adicionar tags"
-              value={tagInput}
-              onChange={(event) => setTagInput(event.target.value)}
-              onKeyDown={handleTagKeyDown}
-            />
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="flex items-center gap-2 rounded-full bg-brand-accent/20 px-3 py-1 text-xs text-brand-primary"
-                >
-                  #{tag}
-                  <button
-                    type="button"
-                    className="text-xs text-brand-primary/70 hover:text-brand-primary"
-                    onClick={() => removeTag(tag)}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            {suggested.length > 0 && (
-              <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                {suggested.slice(0, 6).map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    className="rounded-full border border-gray-200 px-2 py-1 hover:border-brand-primary hover:text-brand-primary"
-                    onClick={() => {
-                      setTags((prev) => [...prev, tag]);
-                      setTagInput("");
-                    }}
-                  >
-                    #{tag}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button className="btn-secondary" type="button" onClick={onClose}>
-              Cancelar
-            </button>
-            <button className="btn-primary" type="submit" disabled={loading}>
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <PlusCircle size={16} />}
-              Criar projeto
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }
 
-export default CreateProjectModal;
+export { GENRES };

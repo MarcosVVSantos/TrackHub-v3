@@ -54,6 +54,16 @@ function parseProjectInput(data = {}, { partial = false } = {}) {
     result.coverUrl = data.coverUrl;
   }
 
+  if (data.bpm !== undefined) {
+    if (data.bpm === null || data.bpm === "") {
+      result.bpm = null;
+    } else {
+      const bpm = Number(data.bpm);
+      if (!Number.isInteger(bpm) || bpm < 40 || bpm > 300) throw badRequest("BPM deve ser um número inteiro entre 40 e 300");
+      result.bpm = bpm;
+    }
+  }
+
   if (data.order !== undefined && Number.isInteger(data.order)) result.order = data.order;
 
   return result;
