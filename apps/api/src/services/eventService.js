@@ -3,6 +3,7 @@ const prisma = require("../lib/prisma");
 const { createNotification } = require("./notificationService");
 const { getProjectRole, httpError } = require("./accessService");
 const { PUBLIC_USER_SELECT } = require("../utils/publicUser");
+const logger = require("../utils/logger");
 const {
   parseCreateEvent,
   parseUpdateEvent,
@@ -18,6 +19,22 @@ const {
 // cronograma (agenda do projeto) e arquivos.
 
 const ROLE_PRIORITY = { viewer: 1, editor: 2, owner: 3 };
+
+// Aviso é complemento: se a notificação falhar, a ação principal (convite, resposta) continua valendo.
+async function notifySafe(payload) {
+  try {
+    await createNotification(payload);
+  } catch (error) {
+    logger.warn("event_notification_failed", { type: payload.type, error: error.message });
+  }
+}
+
+// E-mail de convite pendente só aparece para a dona. Para o resto da equipe, fica mascarado.
+function maskEmail(email) {
+  if (typeof email !== "string" || !email.includes("@")) return email;
+  const [local, domain] = email.split("@");
+  return `${local.slice(0, 1)}***@${domain}`;
+}
 
 const MAX_SLOTS_PER_EVENT = 200;
 
@@ -186,8 +203,11 @@ async function getEvent(userId, projectId) {
   });
 
   const lineup = event.lineup.map((slot) => presentSlot(slot, role));
+  const members =
+    role === "owner" ? event.members : event.members.map((member) => ({ ...member, inviteEmail: maskEmail(member.inviteEmail) }));
   return {
     ...event,
+    members,
     myRole: role,
     lineup,
     lineupSummary: {
@@ -279,7 +299,7 @@ async function addSlot(userId, projectId, body) {
   });
 
   if (artist) {
-    await createNotification({
+    await notifySafe({
       userId: artist.id,
       actorId: userId,
       type: "lineup_invite",
@@ -386,7 +406,7 @@ async function respondToLineup(userId, slotId, body) {
   });
 
   if (slot.status !== status) {
-    await createNotification({
+    await notifySafe({
       userId: slot.project.ownerId,
       actorId: userId,
       type: accept ? "lineup_accept" : "lineup_decline",
@@ -412,6 +432,7 @@ module.exports = {
   respondToLineup,
   // exportados para teste
   presentSlot,
+  maskEmail,
   feeTotal,
   lineupCounts,
   uniqueSlug,

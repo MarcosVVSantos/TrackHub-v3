@@ -13,10 +13,20 @@ const optionalText = (max, label) =>
     .optional()
     .transform((value) => (value === "" ? null : value));
 
+// Só aceita data em texto ISO (ex.: 2026-12-13T22:00:00.000Z), entre 2000 e 2100.
+// Não usamos z.coerce.date(): ele transforma null, true e números em 1970, sem erro.
+const MIN_DATE = Date.UTC(2000, 0, 1);
+const MAX_DATE = Date.UTC(2100, 0, 1);
 const dateField = (label) =>
-  z.coerce.date({ errorMap: () => ({ message: `${label} inválida` }) }).refine((d) => !Number.isNaN(d.getTime()), `${label} inválida`);
+  z
+    .string({ invalid_type_error: `${label} inválida`, required_error: `Informe a ${label.toLowerCase()}` })
+    .max(40, `${label} inválida`)
+    .datetime({ offset: true, message: `${label} inválida` })
+    .transform((value) => new Date(value))
+    .refine((d) => d.getTime() >= MIN_DATE && d.getTime() < MAX_DATE, `${label} fora do intervalo permitido`);
 
-const optionalDate = (label) => z.union([dateField(label), z.null(), z.literal("").transform(() => null)]).optional();
+// null e "" apagam a data (precisam vir antes, para não virarem data).
+const optionalDate = (label) => z.union([z.null(), z.literal("").transform(() => null), dateField(label)]).optional();
 
 // Só links http(s). Bloqueia javascript:, data: e afins, que viram XSS num <a href>.
 const ticketUrl = z
