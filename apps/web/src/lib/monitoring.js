@@ -2,7 +2,10 @@ import * as Sentry from "@sentry/react";
 
 // Erros do navegador vão para o Sentry. Só liga com VITE_SENTRY_DSN definido,
 // então em desenvolvimento (sem a chave) nada é enviado.
-const DSN = import.meta.env.VITE_SENTRY_DSN;
+// No `npm run dev` fica desligado (o painel mostra só erros do site publicado).
+// Para testar localmente, defina VITE_SENTRY_ENABLE_DEV=true no apps/web/.env.
+const DSN =
+  import.meta.env.PROD || import.meta.env.VITE_SENTRY_ENABLE_DEV === "true" ? import.meta.env.VITE_SENTRY_DSN : undefined;
 
 export const monitoringEnabled = Boolean(DSN);
 

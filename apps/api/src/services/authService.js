@@ -68,7 +68,7 @@ async function login({ email, password }) {
 
   const isValid = await bcrypt.compare(password, user?.passwordHash || DUMMY_HASH);
   if (!user || !isValid || !user.isActive) {
-    throw unauthorized("Credenciais inválidas");
+    throw unauthorized("E-mail ou senha incorretos.");
   }
 
   return createSession(user);

@@ -101,7 +101,11 @@ export async function apiRequest(path, { method = "GET", body, token } = {}) {
 
   let response = await doFetch(accessToken);
 
-  if (response.status === 401 && !token) {
+  // Login, cadastro e "esqueci a senha" respondem 401 por senha errada, não por sessão vencida:
+  // nessas rotas o erro tem que chegar na tela (antes a página recarregava e a mensagem sumia).
+  const isAuthRoute = path.startsWith("/auth/");
+
+  if (response.status === 401 && !token && !isAuthRoute) {
     const newToken = await tryRefresh();
     if (newToken) {
       response = await doFetch(newToken);

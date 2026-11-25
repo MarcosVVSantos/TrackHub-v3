@@ -6,7 +6,13 @@ let Sentry = null;
 // Erros que o errorHandler transforma em 400 com mensagem amigável.
 const EXPECTED_ERROR_NAMES = new Set(["ZodError", "MulterError"]);
 
-if (process.env.SENTRY_DSN) {
+// No seu computador o Sentry fica desligado mesmo com SENTRY_DSN no .env: o painel mostra só
+// os erros de quem usa o site de verdade. Para testar o Sentry localmente: SENTRY_ENABLE_DEV=true.
+const sentryEnabled =
+  Boolean(process.env.SENTRY_DSN) &&
+  (process.env.NODE_ENV === "production" || process.env.SENTRY_ENABLE_DEV === "true");
+
+if (sentryEnabled) {
   try {
     Sentry = require("@sentry/node");
     Sentry.init({
