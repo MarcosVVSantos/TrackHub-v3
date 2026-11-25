@@ -5,7 +5,7 @@ import { apiRequest } from "../api/client";
 import { Page } from "../components/layout/AppShell";
 import { EmptyState, ErrorNote, PageHeader, SkeletonBlock } from "../components/ui/States";
 import Flyer from "../components/events/Flyer";
-import { LINEUP_STATUS, countdown, eventDateLabel } from "../lib/events";
+import { APPLICATION_STATUS, LINEUP_STATUS, countdown, eventDateLabel } from "../lib/events";
 
 function InviteRow({ slot, busy, respond }) {
   const event = slot.project;
@@ -56,6 +56,7 @@ export default function LineupInvites() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [applications, setApplications] = useState([]);
 
   async function load() {
     try {
@@ -68,6 +69,7 @@ export default function LineupInvites() {
 
   useEffect(() => {
     load();
+    apiRequest("/events/my-applications").then(setApplications).catch(() => {});
   }, []);
 
   async function respond(slot, accept) {
@@ -89,10 +91,10 @@ export default function LineupInvites() {
 
   return (
     <Page>
-      <PageHeader title="Convites para tocar" subtitle="Eventos em que alguém te colocou no line-up. Responda para quem organiza se planejar." />
+      <PageHeader title="Convites e inscrições" subtitle="Eventos em que alguém te colocou no line-up e as chamadas em que você se inscreveu." />
       <ErrorNote>{error}</ErrorNote>
       {!items && <SkeletonBlock className="h-32" />}
-      {items?.length === 0 && (
+      {items?.length === 0 && applications.length === 0 && (
         <EmptyState
           icon={Mic2}
           title="Nenhum convite por enquanto"
@@ -125,6 +127,38 @@ export default function LineupInvites() {
                 <span style={{ color: LINEUP_STATUS[slot.status].color }}>{LINEUP_STATUS[slot.status].label}</span>
               </li>
             ))}
+          </ul>
+        </section>
+      )}
+      {applications.length > 0 && (
+        <section aria-labelledby="inscricoes" className="flex flex-col gap-3">
+          <h2 id="inscricoes" className="text-lg font-semibold">
+            Minhas inscrições
+          </h2>
+          <ul className="flex flex-col gap-2.5">
+            {applications.map((item) => {
+              const status = APPLICATION_STATUS[item.status];
+              const info = item.project.eventInfo || {};
+              return (
+                <li key={item.id} className="card flex flex-wrap items-center gap-3 p-3.5 text-sm">
+                  <span className="min-w-0 flex-1">
+                    {info.published ? (
+                      <Link to={`/e/${info.slug}`} className="font-semibold text-th-text">
+                        {item.project.name}
+                      </Link>
+                    ) : (
+                      <b>{item.project.name}</b>
+                    )}
+                    <span className="block text-th-muted">
+                      {item.role} · {eventDateLabel(info.startsAt)}
+                    </span>
+                  </span>
+                  <span className="font-semibold" style={{ color: status.color }}>
+                    {item.status === "pending" ? "Aguardando a produção" : status.one}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

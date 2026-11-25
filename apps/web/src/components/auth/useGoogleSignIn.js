@@ -22,7 +22,8 @@ export default function useGoogleSignIn() {
       setRefreshToken(data.refreshToken);
       setUser(data.user);
       track(data.isNew ? "cadastro_google" : "login_google");
-      navigate(data.isNew ? "/account?bemvindo=1" : location.state?.from || "/inicio", { replace: true });
+      // Quem veio de uma tela específica (ex.: inscrição num evento) volta para ela, mesmo sendo conta nova.
+      navigate(location.state?.from || (data.isNew ? "/account?bemvindo=1" : "/inicio"), { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

@@ -24,6 +24,8 @@ const Invites = lazy(() => import("./pages/Invites"));
 const Events = lazy(() => import("./pages/Events"));
 const EventDetail = lazy(() => import("./pages/EventDetail"));
 const LineupInvites = lazy(() => import("./pages/LineupInvites"));
+const PublicEvent = lazy(() => import("./pages/PublicEvent"));
+const PublicApply = lazy(() => import("./pages/PublicApply"));
 const Terms = lazy(() => import("./pages/Legal").then((module) => ({ default: module.Terms })));
 const Privacy = lazy(() => import("./pages/Legal").then((module) => ({ default: module.Privacy })));
 
@@ -70,6 +72,9 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/esqueci-senha" element={<ForgotPassword />} />
         <Route path="/redefinir-senha" element={<ResetPassword />} />
+        {/* Página aberta do evento: sem login */}
+        <Route path="/e/:slug" element={<PublicEvent />} />
+        <Route path="/e/:slug/inscricao" element={<PublicApply />} />
         <Route path="/termos" element={<Terms />} />
         <Route path="/privacidade" element={<Privacy />} />
         {protectedPages.map(([path, Page]) => (

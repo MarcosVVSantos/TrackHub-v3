@@ -93,6 +93,7 @@ const createEventSchema = z
 const updateEventSchema = z.object({
   ...Object.fromEntries(Object.entries(eventFields).map(([key, schema]) => [key, schema.optional()])),
   status: z.enum(STATUSES, { errorMap: () => ({ message: "Etapa inválida" }) }).optional(),
+  published: z.boolean().optional(),
 });
 
 function parseCreateEvent(body) {
@@ -150,6 +151,35 @@ const reorderSchema = z.object({
   ids: z.array(z.string().min(1).max(40)).min(1).max(200),
 });
 
+// Inscrição na chamada aberta.
+const applySchema = z
+  .object({
+    artistName: z.string().trim().min(1, "Informe seu nome artístico").max(80, "Nome com no máximo 80 caracteres"),
+    role: z.string().trim().min(1, "Informe sua função").max(40, "Função com no máximo 40 caracteres"),
+    city: optionalText(80, "Cidade"),
+    trackId: z.union([z.string().min(1).max(40), z.null()]).optional(),
+    sampleUrl: z
+      .union([
+        z
+          .string()
+          .trim()
+          .max(500, "Link muito longo")
+          .url("Link da amostra inválido")
+          .refine((value) => /^https?:\/\//i.test(value), "O link precisa começar com http:// ou https://"),
+        z.literal("").transform(() => null),
+        z.null(),
+      ])
+      .optional(),
+    message: optionalText(280, "Mensagem"),
+    acceptRules: z.literal(true, { errorMap: () => ({ message: "Para enviar, aceite as regras do evento" }) }),
+  })
+  .refine((data) => data.trackId || data.sampleUrl, { message: "Escolha uma faixa sua ou cole o link de uma amostra", path: ["sampleUrl"] });
+
+const APPLICATION_STATUSES = ["pending", "shortlisted", "approved", "rejected"];
+const applicationStatusSchema = z.object({
+  status: z.enum(APPLICATION_STATUSES, { errorMap: () => ({ message: "Status inválido" }) }),
+});
+
 const respondSchema = z.object({ accept: z.boolean({ required_error: "Informe se aceita ou recusa" }) });
 
 // Transforma o nome em um endereço legível: "Batalha da Leste #12" -> "batalha-da-leste-12".
@@ -174,5 +204,8 @@ module.exports = {
   updateSlotSchema,
   reorderSchema,
   respondSchema,
+  applySchema,
+  applicationStatusSchema,
+  APPLICATION_STATUSES,
   slugify,
 };

@@ -281,7 +281,7 @@ export default function EventFormModal({ open, event, canChangeFlyer = true, onC
               <span id="ev-call" className="text-[15px] font-semibold">
                 Aceitar inscrições de artistas?
               </span>
-              <span className="text-[13px] text-th-muted">A chamada aparece na página pública do evento (em breve).</span>
+              <span className="text-[13px] text-th-muted">A chamada aparece na página pública do evento, quando ela estiver publicada.</span>
             </span>
             <button
               type="button"

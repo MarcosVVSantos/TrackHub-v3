@@ -44,6 +44,14 @@ enum LineupStatus {
   declined
 }
 
+// Inscrição de artista na chamada aberta de um evento.
+enum ApplicationStatus {
+  pending
+  shortlisted
+  approved
+  rejected
+}
+
 enum MemberRole {
   owner
   editor
@@ -94,6 +102,9 @@ enum NotificationType {
   lineup_invite
   lineup_accept
   lineup_decline
+  application_new
+  application_approved
+  application_rejected
 }
 
 model User {
@@ -147,6 +158,7 @@ model User {
   tasksAssigned        TaskCard[]     @relation("TaskAssignee")
   fileComments         FileComment[]
   lineupSlots          LineupSlot[]
+  eventApplications    EventApplication[]
 }
 
 model RefreshToken {
@@ -198,6 +210,7 @@ model Project {
   events      ProjectEvent[]
   eventInfo   EventInfo?
   lineup      LineupSlot[]
+  applications EventApplication[]
 
   @@index([ownerId, kind])
 }
@@ -220,6 +233,8 @@ model EventInfo {
   callOpen     Boolean   @default(false)
   callDeadline DateTime?
   callSlots    Int?
+  // Página pública (/e/<slug>) só aparece depois que a equipe publica.
+  published    Boolean   @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -247,6 +262,30 @@ model LineupSlot {
   @@unique([projectId, userId])
   @@index([projectId, position])
   @@index([userId, status])
+}
+
+// Inscrição na chamada aberta. Só quem tem conta se inscreve, uma vez por evento.
+model EventApplication {
+  id         String            @id @default(cuid())
+  projectId  String
+  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistName String
+  role       String
+  city       String?
+  // Amostra: uma faixa pública do próprio artista ou um link (SoundCloud, YouTube...).
+  trackId    String?
+  track      Track?            @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  sampleUrl  String?
+  message    String?
+  status     ApplicationStatus @default(pending)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([projectId, status])
+  @@index([userId])
 }
 
 model ProjectMember {
@@ -390,6 +429,7 @@ model Track {
   saves       TrackSave[]
   playlistTracks PlaylistTrack[]
   socialPosts    SocialPost[]
+  applications   EventApplication[]
 }
 
 model Follow {

@@ -35,7 +35,7 @@ export default function Login() {
       subtitle="Bem-vindo de volta ao estúdio."
       footer={
         <>
-          Ainda não tem conta? <Link to="/register">Criar conta</Link>
+          Ainda não tem conta? <Link to="/register" state={location.state?.from ? { from: location.state.from } : undefined}>Criar conta</Link>
         </>
       }
     >

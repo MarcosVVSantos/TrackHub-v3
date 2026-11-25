@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AuthLayout from "../components/layout/AuthLayout";
 import { ErrorNote } from "../components/ui/States";
@@ -16,6 +16,9 @@ const FIELDS = [
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Quem veio de outra tela (ex.: inscrição num evento) volta para ela depois de criar a conta.
+  const from = location.state?.from;
   const [form, setForm] = useState({ name: "", username: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -27,7 +30,7 @@ export default function Register() {
     setSending(true);
     try {
       await register(form);
-      navigate("/inicio");
+      navigate(from || "/inicio", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -41,7 +44,7 @@ export default function Register() {
       subtitle="Crie faixas junto com outros artistas."
       footer={
         <>
-          Já tem conta? <Link to="/login">Entrar</Link>
+          Já tem conta? <Link to="/login" state={from ? { from } : undefined}>Entrar</Link>
         </>
       }
     >

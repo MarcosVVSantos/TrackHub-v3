@@ -1,4 +1,5 @@
 const eventService = require("../services/eventService");
+const applicationService = require("../services/applicationService");
 
 // Cada rota só chama o serviço e devolve o resultado; erros vão para o errorHandler.
 const handle = (fn, status = 200) => async (req, res, next) => {
@@ -27,4 +28,14 @@ module.exports = {
 
   listMyLineupInvites: handle((req) => eventService.listMyLineupInvites(req.user.sub)),
   respondToLineup: handle((req) => eventService.respondToLineup(req.user.sub, req.params.slotId, req.body)),
+
+  listApplications: handle((req) => applicationService.listApplications(req.user.sub, req.params.id)),
+  setApplicationStatus: handle((req) =>
+    applicationService.setApplicationStatus(req.user.sub, req.params.id, req.params.applicationId, req.body)
+  ),
+  listMyApplications: handle((req) => applicationService.listMyApplications(req.user.sub)),
+
+  // Página pública: req.user existe só se a pessoa estiver logada (optionalAuth).
+  getPublicEvent: handle((req) => applicationService.getPublicEvent(req.params.slug, req.user?.sub)),
+  apply: handle((req) => applicationService.apply(req.user.sub, req.params.slug, req.body), 201),
 };

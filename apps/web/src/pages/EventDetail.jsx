@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Archive, CalendarDays, Check, ChevronRight, Clock, ExternalLink, MapPin, Pencil, Plus } from "lucide-react";
+import { Archive, CalendarDays, Check, ChevronRight, Clock, Copy, ExternalLink, Globe, Lock, MapPin, Pencil, Plus } from "lucide-react";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { Page } from "../components/layout/AppShell";
@@ -11,13 +11,16 @@ import AgendaTab from "../components/project/AgendaTab";
 import LineupTab from "../components/events/LineupTab";
 import EventFilesTab from "../components/events/EventFilesTab";
 import EventFormModal from "../components/events/EventFormModal";
+import ApplicationsTab from "../components/events/ApplicationsTab";
 import Flyer from "../components/events/Flyer";
-import { EVENT_STAGES, countdown, eventDateLabel, eventTypeOf } from "../lib/events";
+import { EVENT_STAGES, countdown, eventDateLabel, eventTypeOf, publicEventUrl } from "../lib/events";
 
 const TABS = [
   { id: "lineup", label: "Line-up" },
   { id: "cronograma", label: "Cronograma" },
   { id: "checklist", label: "Checklist" },
+  // Inscrições têm mensagem e cidade de quem se inscreveu: só aparecem para quem edita.
+  { id: "inscricoes", label: "Inscrições", editorsOnly: true },
   { id: "arquivos", label: "Arquivos" },
   { id: "equipe", label: "Equipe" },
 ];
@@ -92,7 +95,7 @@ export default function EventDetail() {
   const [notice, setNotice] = useState(location.state?.notice || "");
   const [editOpen, setEditOpen] = useState(false);
 
-  const tab = TABS.some((item) => item.id === params.get("tab")) ? params.get("tab") : "lineup";
+  const requestedTab = TABS.some((item) => item.id === params.get("tab")) ? params.get("tab") : "lineup";
 
   async function load() {
     try {
@@ -116,6 +119,18 @@ export default function EventDetail() {
 
   const isOwner = event?.myRole === "owner";
   const canEdit = event?.myRole === "owner" || event?.myRole === "editor";
+  const visibleTabs = TABS.filter((item) => !item.editorsOnly || canEdit);
+  const tab = visibleTabs.some((item) => item.id === requestedTab) ? requestedTab : "lineup";
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(publicEventUrl(event.eventInfo.slug));
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
   const currentMember = event?.members?.find((member) => member.userId === user?.id);
   const team = useMemo(() => {
     if (!event) return [];
@@ -166,6 +181,7 @@ export default function EventDetail() {
     lineup: event.lineupSummary?.total || 0,
     checklist: event.tasks?.length ? `${doneTasks}/${event.tasks.length}` : "",
     arquivos: event._count?.files || 0,
+    inscricoes: event.applicationSummary?.pending || 0,
     equipe: team.length,
   };
   const deadline = info.callDeadline ? new Date(info.callDeadline).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "";
@@ -254,7 +270,7 @@ export default function EventDetail() {
       </section>
 
       <div role="tablist" aria-label="Seções do evento" className="-mb-2 flex gap-1 overflow-x-auto border-b border-th-line">
-        {TABS.map((item) => (
+        {visibleTabs.map((item) => (
           <button
             key={item.id}
             role="tab"
@@ -292,16 +308,63 @@ export default function EventDetail() {
               {canEdit && <Suggestions event={event} onChange={load} />}
             </>
           )}
+          {tab === "inscricoes" && canEdit && <ApplicationsTab event={event} onChange={load} />}
           {tab === "arquivos" && <EventFilesTab eventId={event.id} canEdit={canEdit} />}
           {tab === "equipe" && <TeamTab project={event} currentUser={user} isOwner={isOwner} currentMember={currentMember} onChange={load} />}
         </div>
 
+        {/* O quadro de inscrições precisa da largura toda: o resumo some nessa aba. */}
+        {tab !== "inscricoes" && (
         <aside aria-label="Resumo do evento" className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
           <section aria-labelledby="ev-prox" className="flex flex-col gap-2.5 rounded-2xl border border-th-hover bg-[#2B2236] p-[18px]">
             <h2 id="ev-prox" className="text-[15px] font-semibold">
               Próximo passo
             </h2>
             <p className="text-[15px] leading-relaxed text-th-text">{nextStep(event)}</p>
+          </section>
+
+          <section aria-labelledby="ev-pub" className="card flex flex-col gap-2.5 p-[18px]">
+            <h2 id="ev-pub" className="flex items-center gap-2 text-[15px] font-semibold">
+              {info.published ? <Globe size={16} aria-hidden="true" className="text-stage-finished" /> : <Lock size={16} aria-hidden="true" className="text-th-muted" />}
+              Página pública
+            </h2>
+            {info.published ? (
+              <>
+                <div className="flex gap-2">
+                  <label htmlFor="ev-url" className="sr-only">
+                    Link da página pública
+                  </label>
+                  <input id="ev-url" readOnly className="input font-mono text-[13px]" value={publicEventUrl(info.slug).replace(/^https?:\/\//, "")} onFocus={(e) => e.target.select()} />
+                  <button type="button" className="btn-secondary flex-none px-3" onClick={copyLink}>
+                    <Copy size={15} aria-hidden="true" /> {copied ? "Copiado" : "Copiar"}
+                  </button>
+                </div>
+                <p role="status" className="text-xs text-th-muted">
+                  {copied ? "Link copiado. Cole na bio ou no grupo." : "Qualquer pessoa com o link vê a página, sem login. Cachê e convites pendentes nunca aparecem."}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <a href={`/e/${info.slug}`} target="_blank" rel="noopener noreferrer" className="btn-ghost border border-th-line no-underline">
+                    <ExternalLink size={15} aria-hidden="true" /> Ver página
+                  </a>
+                  {canEdit && (
+                    <button type="button" className="btn-ghost" onClick={() => update({ published: false })}>
+                      Tirar do ar
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-th-text2">
+                  Ainda não publicada. Ao publicar, o evento ganha uma página aberta com flyer, data, local, line-up confirmado e{info.callOpen ? " a chamada de inscrições" : " o link de ingresso"}.
+                </p>
+                {canEdit && (
+                  <button type="button" className="btn-primary self-start" onClick={() => update({ published: true })}>
+                    <Globe size={16} aria-hidden="true" /> Publicar página
+                  </button>
+                )}
+              </>
+            )}
           </section>
 
           <section aria-labelledby="ev-local" className="card flex flex-col gap-1.5 p-[18px]">
@@ -337,6 +400,7 @@ export default function EventDetail() {
             )}
           </section>
         </aside>
+        )}
       </div>
 
       <EventFormModal

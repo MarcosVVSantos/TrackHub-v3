@@ -115,3 +115,16 @@ export function fromIso(iso) {
     time: `${pad(value.getHours())}:${pad(value.getMinutes())}`,
   };
 }
+
+// Inscrições na chamada aberta.
+export const APPLICATION_STATUS = {
+  pending: { label: "Novas", one: "Nova", color: "#AEB9DE", hint: "Ainda não ouvidas." },
+  shortlisted: { label: "Pré-selecionadas", one: "Pré-selecionada", color: "#E9B872", hint: "Gostou: decida depois." },
+  approved: { label: "Aprovadas", one: "Aprovada", color: "#7ED6A2", hint: "Entram no line-up como confirmadas." },
+  rejected: { label: "Recusadas", one: "Recusada", color: "#F2A7A0", hint: "Recebem um aviso gentil." },
+};
+
+// Endereço público do evento, para copiar e compartilhar.
+export function publicEventUrl(slug) {
+  return `${window.location.origin}/e/${slug}`;
+}
