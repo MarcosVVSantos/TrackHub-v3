@@ -187,3 +187,28 @@ test("slug repetido ganha sufixo", async () => {
   assert.strictEqual(await eventService.uniqueSlug("Batalha da Leste #12"), "batalha-da-leste-12-2");
   assert.strictEqual(await eventService.uniqueSlug("Sarau"), "sarau");
 });
+
+// ---------- Revisão OWASP ----------
+
+test("datas: null, true e números não viram 1970", () => {
+  assert.throws(() => parseCreateEvent({ ...base, startsAt: null }));
+  assert.throws(() => parseCreateEvent({ ...base, startsAt: true }));
+  assert.throws(() => parseCreateEvent({ ...base, startsAt: 0 }));
+  assert.throws(() => parseCreateEvent({ ...base, startsAt: "amanhã" }));
+  assert.throws(() => parseCreateEvent({ ...base, startsAt: "1900-01-01T00:00:00Z" }), /fora do intervalo/);
+  const current = { startsAt: new Date("2026-12-13T22:00:00.000Z"), endsAt: new Date("2026-12-14T02:00:00.000Z"), callDeadline: null };
+  assert.strictEqual(parseUpdateEvent({ endsAt: null }, current).endsAt, null);
+  assert.strictEqual(parseUpdateEvent({ callDeadline: "" }, current).callDeadline, null);
+});
+
+test("campos que não existem no formulário são ignorados (sem mass assignment)", () => {
+  const data = parseCreateEvent({ ...base, ownerId: "outra", kind: "track", archivedAt: null, isPublic: true });
+  for (const key of ["ownerId", "kind", "archivedAt", "isPublic"]) assert.strictEqual(key in data, false);
+  const slotData = createSlotSchema.parse({ name: "Trio", role: "Banda", projectId: "outro", status: "confirmed", position: -5 });
+  for (const key of ["projectId", "status", "position"]) assert.strictEqual(key in slotData, false);
+});
+
+test("e-mail de convite pendente fica mascarado", () => {
+  assert.strictEqual(eventService.maskEmail("bia.santos@gmail.com"), "b***@gmail.com");
+  assert.strictEqual(eventService.maskEmail("owner"), "owner");
+});
