@@ -1,4 +1,17 @@
 const feedService = require("../services/feedService");
+const { getPublicTrackAudioUrl } = require("../services/trackSyncService");
+
+// Toca a versão mais recente de uma faixa pública (redireciona para o arquivo).
+async function streamTrackAudio(req, res, next) {
+  try {
+    const url = await getPublicTrackAudioUrl(req.params.id);
+    if (!url) return res.status(404).json({ message: "Faixa não encontrada" });
+    res.set("Cache-Control", "no-store");
+    return res.redirect(url);
+  } catch (error) {
+    return next(error);
+  }
+}
 
 async function listFeed(req, res, next) {
   try {
@@ -181,6 +194,7 @@ async function unsavePlaylist(req, res, next) {
 }
 
 module.exports = {
+  streamTrackAudio,
   listFeed,
   listProductions,
   listProjectPosts,

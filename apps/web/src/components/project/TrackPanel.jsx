@@ -10,7 +10,8 @@ import { formatTime, timeAgo } from "../../lib/format";
 const versionOf = (file) => file?.versions?.[0]?.version || "v1";
 
 // A faixa no centro da tela: escolher versão, ouvir, ver e deixar comentários num momento exato.
-export default function TrackPanel({ project, files, fileId, onSelectFile, currentUser, isOwner, onCommented }) {
+// canComment = false: visitante de um projeto público (só ouve, não vê nem deixa comentários).
+export default function TrackPanel({ project, files, fileId, onSelectFile, currentUser, isOwner, onCommented, canComment = true }) {
   const player = usePlayer();
   const file = files.find((item) => item.id === fileId) || files[0];
   const [comments, setComments] = useState([]);
@@ -25,7 +26,7 @@ export default function TrackPanel({ project, files, fileId, onSelectFile, curre
   const progress = isCurrent ? player.progress : 0;
 
   async function loadComments() {
-    if (!file) return;
+    if (!file || !canComment) return;
     try {
       setComments(await apiRequest(`/projects/${project.id}/files/${file.id}/comments`));
     } catch (err) {
@@ -137,7 +138,7 @@ export default function TrackPanel({ project, files, fileId, onSelectFile, curre
             markers={markers}
             activeMarkerId={activeId}
             onSeek={seekTo}
-            onPick={(seconds) => setAt(Math.round(seconds * 10) / 10)}
+            onPick={canComment ? (seconds) => setAt(Math.round(seconds * 10) / 10) : undefined}
             onMarker={(marker) => {
               setActiveId(marker.id);
               seekTo(marker.atSeconds);
@@ -147,8 +148,12 @@ export default function TrackPanel({ project, files, fileId, onSelectFile, curre
         </div>
       </div>
       <p className="-mt-2 text-xs tabular-nums text-th-muted">
-        {formatTime(progress)} / {formatTime(duration)} · Clique na onda para comentar num trecho
+        {formatTime(progress)} / {formatTime(duration)}
+        {canComment && " · Clique na onda para comentar num trecho"}
       </p>
+
+      {canComment && (
+        <>
 
       <form onSubmit={send} className="flex flex-col gap-2">
         <label htmlFor="comment" className="text-sm font-semibold">
@@ -208,6 +213,8 @@ export default function TrackPanel({ project, files, fileId, onSelectFile, curre
             </li>
           ))}
         </ul>
+      )}
+        </>
       )}
     </section>
   );

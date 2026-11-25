@@ -78,6 +78,8 @@ export default function ProjectDetail() {
   }
 
   const isOwner = project && user?.id === project.ownerId;
+  // "public": você não participa, mas o projeto é público (só a faixa, sem tarefas/agenda/equipe).
+  const isVisitor = project?.access === "public";
   const currentMember = project?.members?.find((member) => member.userId === user?.id);
   const canEdit = isOwner || currentMember?.role === "editor";
   const audioFiles = useMemo(() => (project?.files || []).filter((file) => file.type?.startsWith("audio/")), [project]);
@@ -168,9 +170,15 @@ export default function ProjectDetail() {
 
   return (
     <Page wide>
-      <Link to="/projects" className="-mb-4 inline-flex min-h-[44px] self-start items-center gap-2 text-sm text-th-muted hover:text-th-text">
-        <ArrowLeft size={16} aria-hidden="true" /> Meus projetos
-      </Link>
+      {isVisitor ? (
+        <Link to={`/profile/${project.ownerId}`} className="-mb-4 inline-flex min-h-[44px] self-start items-center gap-2 text-sm text-th-muted hover:text-th-text">
+          <ArrowLeft size={16} aria-hidden="true" /> Perfil de {project.owner?.name || "artista"}
+        </Link>
+      ) : (
+        <Link to="/projects" className="-mb-4 inline-flex min-h-[44px] self-start items-center gap-2 text-sm text-th-muted hover:text-th-text">
+          <ArrowLeft size={16} aria-hidden="true" /> Meus projetos
+        </Link>
+      )}
 
       {/* Cabeçalho */}
       <header className="flex flex-col gap-5 md:flex-row md:items-start">
@@ -277,7 +285,8 @@ export default function ProjectDetail() {
         </ol>
       </nav>
 
-      {/* Abas */}
+      {/* Abas (visitante de projeto público só vê a faixa) */}
+      {!isVisitor && (
       <div role="tablist" aria-label="Seções do projeto" className="-mb-2 flex gap-1 overflow-x-auto border-b border-th-line">
         {TABS.map((item) => (
           <button
@@ -296,6 +305,7 @@ export default function ProjectDetail() {
           </button>
         ))}
       </div>
+      )}
 
       <ErrorNote>{error}</ErrorNote>
       {notice && (
@@ -305,7 +315,7 @@ export default function ProjectDetail() {
       )}
 
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === "faixa" && (
+        {(tab === "faixa" || isVisitor) && (
           <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
             <div className="flex min-w-0 flex-col gap-5">
               {audioFiles.length ? (
@@ -316,6 +326,7 @@ export default function ProjectDetail() {
                   onSelectFile={selectFile}
                   currentUser={user}
                   isOwner={isOwner}
+                  canComment={!isVisitor}
                 />
               ) : (
                 <EmptyState icon={UploadCloud} title="Nenhuma versão ainda" text={canEdit ? "Envie a primeira versão: um áudio de referência, uma guia ou o beat." : "Quando a equipe enviar uma versão, ela aparece aqui."} />
@@ -343,12 +354,24 @@ export default function ProjectDetail() {
             </div>
 
             <aside className="flex flex-col gap-5">
+              {isVisitor ? (
+                <section className="card" aria-labelledby="sobre">
+                  <h2 id="sobre" className="eyebrow">
+                    Projeto de {project.owner?.name}
+                  </h2>
+                  <p className="mt-2 text-sm text-th-text2">Você está vendo a versão mais recente publicada. Quer colaborar? Mande uma mensagem para o artista.</p>
+                  <Link to={`/profile/${project.ownerId}`} className="btn-secondary mt-4 w-full">
+                    Ver perfil
+                  </Link>
+                </section>
+              ) : (
               <section className="card" aria-labelledby="proximo">
                 <h2 id="proximo" className="eyebrow">
                   Próximo passo
                 </h2>
                 <p className="mt-2 text-sm text-th-text2">{nextStep(project, audioFiles, openTasks)}</p>
               </section>
+              )}
 
               {canEdit && (
                 <section className="card flex flex-col gap-3" aria-labelledby="enviar">
@@ -370,7 +393,7 @@ export default function ProjectDetail() {
                 </section>
               )}
 
-              {audioFiles.length > 0 && (
+              {!isVisitor && audioFiles.length > 0 && (
                 <section className="card p-0" aria-labelledby="versoes">
                   <h2 id="versoes" className="border-b border-th-line px-5 py-4 font-semibold">
                     Histórico de versões
@@ -403,10 +426,10 @@ export default function ProjectDetail() {
             </aside>
           </div>
         )}
-        {tab === "tarefas" && <TasksTab project={project} team={team} canEdit={canEdit} onChange={load} />}
-        {tab === "equipe" && <TeamTab project={project} currentUser={user} isOwner={isOwner} currentMember={currentMember} onChange={load} />}
-        {tab === "agenda" && <AgendaTab project={project} team={team} canEdit={canEdit} onChange={load} />}
-        {tab === "historico" && <HistoryTab project={project} onComment={load} />}
+        {!isVisitor && tab === "tarefas" && <TasksTab project={project} team={team} canEdit={canEdit} onChange={load} />}
+        {!isVisitor && tab === "equipe" && <TeamTab project={project} currentUser={user} isOwner={isOwner} currentMember={currentMember} onChange={load} />}
+        {!isVisitor && tab === "agenda" && <AgendaTab project={project} team={team} canEdit={canEdit} onChange={load} />}
+        {!isVisitor && tab === "historico" && <HistoryTab project={project} onComment={load} />}
       </div>
 
       <EditProjectModal open={editOpen} project={project} onClose={() => setEditOpen(false)} onSaved={(updated) => setProject((prev) => ({ ...prev, ...updated }))} />
