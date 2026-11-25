@@ -28,6 +28,7 @@ router.use(authenticate);
 // Lado do artista convidado (precisa vir antes de "/:id").
 router.get("/lineup-invites", controller.listMyLineupInvites);
 router.post("/lineup-invites/:slotId/respond", controller.respondToLineup);
+router.get("/my-applications", controller.listMyApplications);
 
 // Eventos contam no mesmo limite de projetos do plano.
 router.get("/", controller.listEvents);
@@ -42,5 +43,9 @@ router.post("/:id/lineup", lineupAddLimiter, controller.addSlot);
 router.put("/:id/lineup/order", controller.reorderLineup);
 router.patch("/:id/lineup/:slotId", controller.updateSlot);
 router.delete("/:id/lineup/:slotId", controller.removeSlot);
+
+// Inscrições recebidas (só dona e editores).
+router.get("/:id/applications", controller.listApplications);
+router.patch("/:id/applications/:applicationId", controller.setApplicationStatus);
 
 module.exports = router;

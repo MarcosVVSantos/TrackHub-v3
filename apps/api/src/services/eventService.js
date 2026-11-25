@@ -110,7 +110,7 @@ async function uniqueSlug(name, db = prisma) {
 }
 
 function eventInfoData(data) {
-  const fields = ["type", "startsAt", "endsAt", "venueName", "venueAddress", "ticketUrl", "callOpen", "callDeadline", "callSlots"];
+  const fields = ["type", "startsAt", "endsAt", "venueName", "venueAddress", "ticketUrl", "callOpen", "callDeadline", "callSlots", "published"];
   const result = {};
   for (const field of fields) if (data[field] !== undefined) result[field] = data[field];
   return result;
@@ -215,6 +215,16 @@ async function getEvent(userId, projectId) {
   });
 
   const lineup = event.lineup.map((slot) => presentSlot(slot, role));
+  // Resumo das inscrições: só para quem edita (as inscrições têm mensagem e cidade de quem se inscreveu).
+  let applicationSummary;
+  if (canSeeFees(role)) {
+    const groups = await prisma.eventApplication.groupBy({ by: ["status"], where: { projectId }, _count: { _all: true } });
+    applicationSummary = { total: 0, pending: 0, shortlisted: 0, approved: 0, rejected: 0 };
+    for (const group of groups) {
+      applicationSummary[group.status] = group._count._all;
+      applicationSummary.total += group._count._all;
+    }
+  }
   const members =
     role === "owner" ? event.members : event.members.map((member) => ({ ...member, inviteEmail: maskEmail(member.inviteEmail) }));
   return {
@@ -222,6 +232,7 @@ async function getEvent(userId, projectId) {
     members,
     myRole: role,
     lineup,
+    ...(applicationSummary ? { applicationSummary } : {}),
     lineupSummary: {
       ...lineupCounts(event.lineup),
       ...(canSeeFees(role) ? { feeTotalCents: feeTotal(event.lineup) } : {}),
