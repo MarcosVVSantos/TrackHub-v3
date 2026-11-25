@@ -1,23 +1,37 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
-import Projects from "./pages/Projects";
-import ProjectDetail from "./pages/ProjectDetail";
-import Feed from "./pages/Feed";
-import Account from "./pages/Account";
-import Profile from "./pages/Profile";
-import Explore from "./pages/Explore";
-import Calendar from "./pages/Calendar";
-import Landing from "./pages/Landing";
-import Chat from "./pages/Chat";
-import Playlists from "./pages/Playlists";
-import PlaylistDetail from "./pages/PlaylistDetail";
-import Invites from "./pages/Invites";
-import { Terms, Privacy } from "./pages/Legal";
+
+// Cada página vira um arquivo separado, baixado só quando a pessoa abre aquela tela.
+// Assim a primeira visita não precisa baixar o app inteiro (gráficos, chat, arrastar e soltar...).
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Home = lazy(() => import("./pages/Home"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Projects = lazy(() => import("./pages/Projects"));
+const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
+const Feed = lazy(() => import("./pages/Feed"));
+const Account = lazy(() => import("./pages/Account"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Explore = lazy(() => import("./pages/Explore"));
+const Calendar = lazy(() => import("./pages/Calendar"));
+const Landing = lazy(() => import("./pages/Landing"));
+const Chat = lazy(() => import("./pages/Chat"));
+const Playlists = lazy(() => import("./pages/Playlists"));
+const PlaylistDetail = lazy(() => import("./pages/PlaylistDetail"));
+const Invites = lazy(() => import("./pages/Invites"));
+const Terms = lazy(() => import("./pages/Legal").then((module) => ({ default: module.Terms })));
+const Privacy = lazy(() => import("./pages/Legal").then((module) => ({ default: module.Privacy })));
+
+// Enquanto o arquivo da página chega (normalmente uma fração de segundo).
+function PageLoading() {
+  return (
+    <div role="status" aria-live="polite" className="flex min-h-[40vh] items-center justify-center text-sm text-th-muted">
+      Carregando…
+    </div>
+  );
+}
 import ProtectedRoute from "./routes/ProtectedRoute";
 import GlobalPlayer from "./components/GlobalPlayer";
 import { useAuth } from "./context/AuthContext";
@@ -43,6 +57,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-th-bg text-th-text">
+      <Suspense fallback={<PageLoading />}>
       <Routes>
         <Route path="/" element={!loading && user ? <Navigate to="/inicio" replace /> : <Landing />} />
         <Route path="/login" element={<Login />} />
@@ -52,13 +67,25 @@ function App() {
         <Route path="/termos" element={<Terms />} />
         <Route path="/privacidade" element={<Privacy />} />
         {protectedPages.map(([path, Page]) => (
-          <Route key={path} path={path} element={<ProtectedRoute><Page /></ProtectedRoute>} />
+          <Route
+            key={path}
+            path={path}
+            element={
+              <ProtectedRoute>
+                {/* Suspense aqui dentro: a barra lateral continua na tela enquanto a página carrega */}
+                <Suspense fallback={<PageLoading />}>
+                  <Page />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
         ))}
         {/* Endereços antigos continuam funcionando */}
         <Route path="/dashboard" element={<Navigate to="/inicio" replace />} />
         <Route path="/feed" element={<Navigate to="/comunidade" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       <GlobalPlayer />
     </div>
   );

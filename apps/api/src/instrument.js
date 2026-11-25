@@ -3,7 +3,16 @@ const logger = require("./utils/logger");
 
 let Sentry = null;
 
-if (process.env.SENTRY_DSN) {
+// Erros que o errorHandler transforma em 400 com mensagem amigável.
+const EXPECTED_ERROR_NAMES = new Set(["ZodError", "MulterError"]);
+
+// No seu computador o Sentry fica desligado mesmo com SENTRY_DSN no .env: o painel mostra só
+// os erros de quem usa o site de verdade. Para testar o Sentry localmente: SENTRY_ENABLE_DEV=true.
+const sentryEnabled =
+  Boolean(process.env.SENTRY_DSN) &&
+  (process.env.NODE_ENV === "production" || process.env.SENTRY_ENABLE_DEV === "true");
+
+if (sentryEnabled) {
   try {
     Sentry = require("@sentry/node");
     Sentry.init({
@@ -13,6 +22,18 @@ if (process.env.SENTRY_DSN) {
       release: process.env.RENDER_GIT_COMMIT || undefined,
       tracesSampleRate: 0.1,
       sendDefaultPii: false,
+      // A integração do Express manda para o Sentry todo erro que passa por next(),
+      // inclusive os que já viram resposta 4xx (validação, upload inválido, sem permissão).
+      // Esses são "uso normal", não bugs: só poluem o painel. Ficam no log do Render.
+      beforeSend(event, hint) {
+        const error = hint?.originalException;
+        if (error && typeof error === "object") {
+          if (EXPECTED_ERROR_NAMES.has(error.name)) return null;
+          if (Number.isInteger(error.status) && error.status < 500) return null;
+          if (error.type === "entity.parse.failed" || error.type === "entity.too.large") return null;
+        }
+        return event;
+      },
     });
   } catch (error) {
     logger.warn("sentry_unavailable", { reason: "SENTRY_DSN definido, mas @sentry/node não está instalado" });

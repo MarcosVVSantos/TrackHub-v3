@@ -1,4 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { reportProblem, safeUrl } from "../lib/monitoring";
+
+// Códigos de erro do elemento <audio> (MediaError).
+const MEDIA_ERRORS = { 1: "abortado", 2: "erro de rede", 3: "falha ao decodificar", 4: "formato ou link não suportado" };
+
+// Erros esperados ao chamar play(): o navegador bloqueou o autoplay, ou a pessoa trocou de faixa no meio.
+const EXPECTED_PLAY_ERRORS = ["NotAllowedError", "AbortError"];
 
 const PlayerContext = createContext(null);
 
@@ -12,6 +19,8 @@ export function PlayerProvider({ children }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Fila de reprodução (usada nas playlists): ao terminar uma faixa, toca a próxima.
   const [queue, setQueue] = useState([]);
+  // Mensagem para mostrar quando a faixa não toca (ex.: link expirado, arquivo corrompido).
+  const [playError, setPlayError] = useState("");
   const queueRef = useRef([]);
   const objectUrlRef = useRef(null);
 
@@ -33,12 +42,28 @@ export function PlayerProvider({ children }) {
       }
     }
 
+    // O <audio> não lança exceção quando o arquivo falha: ele dispara o evento "error".
+    function handleError() {
+      if (!audio.src || audio.src === window.location.href) return; // stop() limpa o src
+      const code = audio.error?.code;
+      setIsPlaying(false);
+      setPlayError("Não deu para tocar esta faixa. Tente de novo em instantes.");
+      reportProblem("player", `áudio não carregou (${MEDIA_ERRORS[code] || "desconhecido"})`, {
+        mediaErrorCode: code,
+        mediaErrorMessage: audio.error?.message,
+        src: safeUrl(audio.src),
+        trackId: audio.dataset.trackId,
+      });
+    }
+
+    audio.addEventListener("error", handleError);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
 
     return () => {
       audio.pause();
+      audio.removeEventListener("error", handleError);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
@@ -74,8 +99,29 @@ export function PlayerProvider({ children }) {
 
     audio.volume = volume;
     setCurrent(track);
-    await audio.play();
-    setIsPlaying(true);
+    setPlayError("");
+    return startPlayback(track);
+  }
+
+  // Chama play() sem deixar a promessa rejeitada "solta" (antes isso falhava em silêncio).
+  async function startPlayback(track) {
+    const audio = audioRef.current;
+    try {
+      await audio.play();
+      setIsPlaying(true);
+      return true;
+    } catch (error) {
+      setIsPlaying(false);
+      if (!EXPECTED_PLAY_ERRORS.includes(error?.name)) {
+        setPlayError("Não deu para tocar esta faixa.");
+        reportProblem("player", `play() falhou: ${error?.name || "erro"}`, {
+          detail: error?.message,
+          src: safeUrl(audio.src),
+          trackId: track?.id,
+        });
+      }
+      return false;
+    }
   }
 
   const playTrackRef = useRef(null);
@@ -103,8 +149,7 @@ export function PlayerProvider({ children }) {
       setIsPlaying(false);
       return;
     }
-    audio.play();
-    setIsPlaying(true);
+    startPlayback(current);
   }
 
   function seek(value) {
@@ -128,6 +173,8 @@ export function PlayerProvider({ children }) {
     () => ({
       current,
       isPlaying,
+      playError,
+      clearPlayError: () => setPlayError(""),
       progress,
       duration,
       volume,

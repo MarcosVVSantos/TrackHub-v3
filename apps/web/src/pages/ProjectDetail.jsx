@@ -14,6 +14,7 @@ import HistoryTab from "../components/project/HistoryTab";
 import EditProjectModal from "../components/project/EditProjectModal";
 import SaveToPlaylistModal from "../components/project/SaveToPlaylistModal";
 import { analyzeAudio } from "../lib/audioPeaks";
+import { reportProblem } from "../lib/monitoring";
 import { track } from "../lib/analytics";
 import { STAGES, stageIndex, stageOf, timeAgo, formatTime } from "../lib/format";
 
@@ -117,6 +118,16 @@ export default function ProjectDetail() {
       if (created?.id && file.type.startsWith("audio/")) selectFile(created.id);
     } catch (err) {
       setError(err.message);
+      // Limite do plano / arquivo inválido (4xx) é esperado; queda de rede ou 5xx não.
+      if (!err.status || err.status >= 500) {
+        reportProblem("upload", "envio de versão falhou", {
+          projectId: id,
+          status: err.status,
+          requestId: err.requestId,
+          fileType: file.type,
+          sizeMb: Math.round((file.size / 1048576) * 10) / 10,
+        });
+      }
     } finally {
       setUploading("");
       if (fileInput.current) fileInput.current.value = "";
