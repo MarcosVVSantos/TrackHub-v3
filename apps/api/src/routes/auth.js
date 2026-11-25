@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.post("/register", authLimiter, controller.register);
 router.post("/login", authLimiter, controller.login);
+router.post("/google", authLimiter, controller.google);
 router.post("/forgot-password", forgotLimiter, controller.forgotPassword);
 router.post("/reset-password", authLimiter, controller.resetPassword);
 router.post("/refresh", refreshLimiter, controller.refresh);

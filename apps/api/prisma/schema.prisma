@@ -78,7 +78,9 @@ model User {
   email         String           @unique
   username      String           @unique
   name          String
-  passwordHash  String
+  // Opcional: quem entra só com Google pode não ter senha.
+  passwordHash  String?
+  googleId      String?          @unique
   avatarUrl     String?
   bio           String?
   isActive      Boolean          @default(true)

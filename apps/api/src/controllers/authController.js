@@ -1,6 +1,17 @@
 const authService = require("../services/authService");
 const { logSecurityEvent } = require("../utils/securityLog");
 const passwordResetService = require("../services/passwordResetService");
+const googleAuthService = require("../services/googleAuthService");
+
+async function google(req, res, next) {
+  try {
+    const result = await googleAuthService.loginWithGoogle(req.body?.credential);
+    res.status(result.isNew ? 201 : 200).json(result);
+  } catch (error) {
+    if (error.status === 401) logSecurityEvent("google_login_failed", { req, reason: error.message });
+    next(error);
+  }
+}
 const { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } = require("../utils/validators");
 
 // Resposta igual exista a conta ou não (não revela quem tem cadastro).
@@ -71,6 +82,7 @@ async function logout(req, res, next) {
 }
 
 module.exports = {
+  google,
   forgotPassword,
   resetPassword,
   register,
