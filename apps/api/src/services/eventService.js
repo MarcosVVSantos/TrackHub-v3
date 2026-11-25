@@ -404,7 +404,7 @@ async function listMyLineupInvites(userId) {
           name: true,
           coverUrl: true,
           owner: { select: PUBLIC_USER_SELECT },
-          eventInfo: { select: { slug: true, type: true, startsAt: true, endsAt: true, venueName: true, venueAddress: true } },
+          eventInfo: { select: { slug: true, type: true, startsAt: true, endsAt: true, venueName: true, venueAddress: true, published: true } },
         },
       },
     },

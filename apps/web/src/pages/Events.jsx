@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Ticket, Mail } from "lucide-react";
+import { Plus, Ticket, Mail, Mic2 } from "lucide-react";
 import { apiRequest } from "../api/client";
 import { Page } from "../components/layout/AppShell";
 import { AvatarStack } from "../components/ui/Avatar";
@@ -56,6 +56,7 @@ export default function Events() {
   const [params, setParams] = useSearchParams();
   const [events, setEvents] = useState(null);
   const [invites, setInvites] = useState([]);
+  const [gigs, setGigs] = useState([]);
   const [error, setError] = useState("");
   const [view, setView] = useState("board");
   const [type, setType] = useState("all");
@@ -70,7 +71,17 @@ export default function Events() {
         setEvents([]);
       });
     apiRequest("/events/lineup-invites")
-      .then((list) => setInvites(list.filter((item) => item.status === "invited")))
+      .then((list) => {
+        setInvites(list.filter((item) => item.status === "invited"));
+        // Onde você vai se apresentar: line-ups em que você está confirmado e que ainda não passaram.
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        setGigs(
+          list
+            .filter((item) => item.status === "confirmed" && new Date(item.project.eventInfo?.startsAt) >= startOfToday)
+            .sort((a, b) => new Date(a.project.eventInfo.startsAt) - new Date(b.project.eventInfo.startsAt))
+        );
+      })
       .catch(() => {});
   }, []);
 
@@ -134,16 +145,6 @@ export default function Events() {
         </Link>
       )}
 
-      {usedTypes.length > 1 && (
-        <div role="group" aria-label="Filtrar por tipo" className="flex flex-wrap gap-2">
-          {[{ id: "all", label: "Todos" }, ...usedTypes].map((item) => (
-            <button key={item.id} type="button" className="chip min-h-[40px] px-4" aria-pressed={type === item.id} onClick={() => setType(item.id)}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
-
       {!events && (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
           {[1, 2, 3, 4].map((key) => (
@@ -152,7 +153,47 @@ export default function Events() {
         </div>
       )}
 
-      {events?.length === 0 && !error && (
+      {gigs.length > 0 && (
+        <section aria-labelledby="gigs" className="flex flex-col gap-3">
+          <h2 id="gigs" className="flex items-center gap-2 text-lg font-semibold">
+            <Mic2 size={18} aria-hidden="true" className="text-th-lilac" /> Onde você vai se apresentar
+          </h2>
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+            {gigs.map((slot) => {
+              const event = slot.project;
+              const info = event.eventInfo || {};
+              const to = info.published ? `/e/${info.slug}` : "/eventos/convites";
+              return (
+                <li key={slot.id}>
+                  <Link to={to} className="card-link flex items-center gap-3.5 p-3">
+                    <Flyer event={{ ...event, type: info.type }} className="h-[72px] w-14 flex-none rounded-lg" titleClass="text-[10px]" showKind={false} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold">{event.name}</span>
+                      <span className="block truncate text-[13px] text-th-text2">
+                        {eventDateLabel(info.startsAt)} · {countdown(info.startsAt)}
+                      </span>
+                      <span className="block truncate text-xs text-th-muted">
+                        Você como {slot.role}
+                        {slot.startTime ? ` às ${slot.startTime}` : ""} · {info.venueName || "local a definir"} · por {event.owner?.name}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {events?.length > 0 && <h2 className="mt-3 text-lg font-semibold">Eventos que você organiza</h2>}
+        </section>
+      )}
+
+      {events?.length === 0 && !error && gigs.length > 0 && (
+        <p className="rounded-[14px] border border-th-line px-4 py-4 text-sm text-th-muted">
+          Você ainda não organiza nenhum evento.{" "}
+          <Link to="/eventos?novo=1">Criar um evento</Link>
+        </p>
+      )}
+
+      {events?.length === 0 && !error && gigs.length === 0 && (
         <EmptyState
           icon={Ticket}
           title="Seu primeiro evento começa aqui"
@@ -163,6 +204,16 @@ export default function Events() {
             </Link>
           }
         />
+      )}
+
+      {usedTypes.length > 1 && (
+        <div role="group" aria-label="Filtrar por tipo" className="flex flex-wrap gap-2">
+          {[{ id: "all", label: "Todos" }, ...usedTypes].map((item) => (
+            <button key={item.id} type="button" className="chip min-h-[40px] px-4" aria-pressed={type === item.id} onClick={() => setType(item.id)}>
+              {item.label}
+            </button>
+          ))}
+        </div>
       )}
 
       {events?.length > 0 && view === "board" && (
