@@ -16,6 +16,7 @@ import {
   ListMusic,
 } from "lucide-react";
 import { API_URL, apiRequest } from "../api/client";
+import { reportProblem } from "../lib/monitoring";
 import { useAuth } from "../context/AuthContext";
 import { usePlayer } from "../context/PlayerContext";
 import Skeleton from "../components/Skeleton";
@@ -166,24 +167,27 @@ function Feed() {
       playlistAudioRef.current.pause();
       setPlaylistPlaying(null);
     }
-    const response = await fetch(`${API_URL}/projects/${project.id}/audio`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("trackhub_access")}` },
-    });
-    if (!response.ok) {
-      setError("Não foi possível reproduzir o áudio do projeto");
-      return;
-    }
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
     if (player?.current?.id === project.id) {
       player.togglePlay();
+      return;
+    }
+    // Pede o link do áudio (assinado, expira) e toca direto do armazenamento.
+    // Antes baixávamos o arquivo inteiro com fetch(), que falhava no CORS do bucket privado.
+    let url;
+    try {
+      ({ url } = await apiRequest(`/projects/${project.id}/audio?format=json`));
+    } catch (err) {
+      setError("Não foi possível reproduzir o áudio do projeto");
+      // 4xx (sem permissão, sem áudio) é esperado; o resto é problema de verdade.
+      if (!err.status || err.status >= 500) {
+        reportProblem("feed", "link do áudio do projeto falhou", { projectId: project.id, status: err.status, requestId: err.requestId });
+      }
       return;
     }
     player?.playTrack({
       id: project.id,
       title: project.name,
       audioUrl: url,
-      isObjectUrl: true,
       coverUrl: project.coverUrl,
       projectId: project.id,
       projectName: project.name,

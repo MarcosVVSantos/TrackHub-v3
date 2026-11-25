@@ -91,8 +91,12 @@ async function statusHistory(req, res, next) {
 async function streamAudio(req, res, next) {
   try {
     const file = await projectService.getProjectAudio(req.user.sub, req.params.id);
+    const url = await storage.resolveFileUrl(file.url);
     res.set("Cache-Control", "no-store");
-    return res.redirect(await storage.resolveFileUrl(file.url));
+    // ?format=json devolve o link (assinado) em vez de redirecionar. O front usa isso para
+    // tocar no <audio> direto do R2: um fetch() seguindo o redirect esbarraria no CORS do bucket.
+    if (req.query.format === "json") return res.json({ url, fileId: file.id });
+    return res.redirect(url);
   } catch (error) {
     next(error);
   }

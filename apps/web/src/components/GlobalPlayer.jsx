@@ -29,7 +29,13 @@ function GlobalPlayer() {
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold text-th-text">{current.title}</span>
-            <span className="block truncate text-xs text-th-muted">{current.subtitle || current.projectName || ""}</span>
+            {player.playError ? (
+              <span role="alert" className="block truncate text-xs text-th-danger">
+                {player.playError}
+              </span>
+            ) : (
+              <span className="block truncate text-xs text-th-muted">{current.subtitle || current.projectName || ""}</span>
+            )}
           </span>
         </div>
 
