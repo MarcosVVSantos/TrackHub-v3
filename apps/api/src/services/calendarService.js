@@ -61,7 +61,7 @@ async function listCalendarEvents(userId, { start, end } = {}) {
   return prisma.projectEvent.findMany({
     where,
     include: {
-      project: { select: { id: true, name: true, coverUrl: true } },
+      project: { select: { id: true, name: true, coverUrl: true, kind: true } },
       participants: { include: { user: { select: { id: true, name: true, username: true, avatarUrl: true } } } },
       createdBy: { select: { id: true, name: true, username: true, avatarUrl: true } },
     },
@@ -86,7 +86,7 @@ async function listCalendarOverview(userId) {
         startsAt: { gte: startOfDay, lt: endOfDay },
       },
       include: {
-        project: { select: { id: true, name: true, coverUrl: true } },
+        project: { select: { id: true, name: true, coverUrl: true, kind: true } },
         participants: { include: { user: { select: { id: true, name: true, username: true, avatarUrl: true } } } },
       },
       orderBy: { startsAt: "asc" },
@@ -97,7 +97,7 @@ async function listCalendarOverview(userId) {
         startsAt: { gt: now },
       },
       include: {
-        project: { select: { id: true, name: true, coverUrl: true } },
+        project: { select: { id: true, name: true, coverUrl: true, kind: true } },
         participants: { include: { user: { select: { id: true, name: true, username: true, avatarUrl: true } } } },
       },
       orderBy: { startsAt: "asc" },
