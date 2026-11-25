@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import LogoMark from "../components/ui/LogoMark";
 
 // Landing page (versão do design novo). As seções seguem a "estrutura de uma música":
 // intro, verso, refrão, ponte e outro, cada uma com o tempo da faixa no topo.
@@ -94,13 +95,7 @@ export default function Landing() {
       <header className="border-b border-th-line">
         <nav aria-label="Principal" className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-8 gap-y-3 px-6 py-[18px]">
           <Link to="/" className="flex items-center gap-2.5 text-th-text hover:text-th-text">
-            <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-white text-th-bg">
-              <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 18V5l11-2v13" />
-                <circle cx="6" cy="18" r="3" />
-                <circle cx="17" cy="16" r="3" />
-              </svg>
-            </span>
+            <LogoMark size={36} />
             <span className="text-[19px] font-bold tracking-[-0.01em]">TrackHub</span>
             <span className="rounded-[10px] bg-[#2B2236] px-2 py-[3px] text-[11px] font-bold tracking-[0.12em] text-th-lilac">BETA</span>
           </Link>
@@ -442,7 +437,10 @@ export default function Landing() {
 
       <footer className="border-t border-th-line">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-7 gap-y-3 px-6 py-7 text-sm text-th-muted">
-          <span className="font-bold text-th-text">TrackHub</span>
+          <span className="flex items-center gap-2 font-bold text-th-text">
+            <LogoMark size={24} />
+            TrackHub
+          </span>
           <span>© {new Date().getFullYear()}</span>
           <span className="flex-1" />
           <Link className="text-th-text2 hover:text-white" to="/termos">
