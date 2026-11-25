@@ -21,6 +21,9 @@ const Chat = lazy(() => import("./pages/Chat"));
 const Playlists = lazy(() => import("./pages/Playlists"));
 const PlaylistDetail = lazy(() => import("./pages/PlaylistDetail"));
 const Invites = lazy(() => import("./pages/Invites"));
+const Events = lazy(() => import("./pages/Events"));
+const EventDetail = lazy(() => import("./pages/EventDetail"));
+const LineupInvites = lazy(() => import("./pages/LineupInvites"));
 const Terms = lazy(() => import("./pages/Legal").then((module) => ({ default: module.Terms })));
 const Privacy = lazy(() => import("./pages/Legal").then((module) => ({ default: module.Privacy })));
 
@@ -40,6 +43,9 @@ const protectedPages = [
   ["/inicio", Home],
   ["/projects", Projects],
   ["/projects/:id", ProjectDetail],
+  ["/eventos", Events],
+  ["/eventos/convites", LineupInvites],
+  ["/eventos/:id", EventDetail],
   ["/playlists", Playlists],
   ["/playlists/:id", PlaylistDetail],
   ["/calendar", Calendar],

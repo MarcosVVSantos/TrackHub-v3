@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Mail, MessageSquare, Play, Pause, Columns3, UsersRound } from "lucide-react";
+import { CalendarDays, Mail, MessageSquare, Mic2, Play, Pause, Columns3, UsersRound } from "lucide-react";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { usePlayer } from "../context/PlayerContext";
@@ -9,6 +9,11 @@ import { Avatar, AvatarStack } from "../components/ui/Avatar";
 import { StageBadge, StageBars } from "../components/ui/Stage";
 import { EmptyState, ErrorNote, SkeletonBlock } from "../components/ui/States";
 import { dayLabel, formatTime, greeting, hourLabel, joinNames, plural, timeAgo } from "../lib/format";
+import { countdown, eventDateLabel, eventStageOf } from "../lib/events";
+import Flyer from "../components/events/Flyer";
+
+// Agenda de um evento abre no cronograma do evento; de uma faixa, na agenda do projeto.
+const agendaLink = (project) => (project?.kind === "event" ? `/eventos/${project.id}?tab=cronograma` : `/projects/${project?.id}?tab=agenda`);
 
 const GUIDE_KEY = "trackhub_guide_hidden";
 
@@ -116,8 +121,15 @@ export default function Home() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [guideHidden, setGuideHidden] = useState(readGuideHidden);
+  const [events, setEvents] = useState([]);
+  const [gigs, setGigs] = useState([]);
 
   async function load() {
+    // Eventos ficam fora do /home para não atrasar o resto da tela; se falharem, o bloco só não aparece.
+    apiRequest("/events?when=upcoming").then((list) => setEvents(list.slice(0, 3))).catch(() => {});
+    apiRequest("/events/lineup-invites")
+      .then((list) => setGigs(list.filter((item) => item.status === "invited")))
+      .catch(() => {});
     try {
       setData(await apiRequest("/home"));
     } catch (err) {
@@ -135,6 +147,18 @@ export default function Home() {
       localStorage.setItem(GUIDE_KEY, "1");
     } catch {
       // Sem armazenamento local: o guia volta na próxima visita.
+    }
+  }
+
+  async function answerGig(slot, accept) {
+    setBusy(slot.id);
+    try {
+      await apiRequest(`/events/lineup-invites/${slot.id}/respond`, { method: "POST", body: { accept } });
+      setGigs((list) => list.filter((item) => item.id !== slot.id));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
     }
   }
 
@@ -166,7 +190,7 @@ export default function Home() {
   }
 
   const firstName = user?.name?.split(" ")[0] || "";
-  const actions = data ? data.invites.length + data.comments.length + data.today.length : 0;
+  const actions = data ? data.invites.length + data.comments.length + data.today.length + gigs.length : 0;
 
   return (
     <Page>
@@ -216,6 +240,24 @@ export default function Home() {
                 </button>
               </ActionRow>
             ))}
+            {data &&
+              gigs.map((slot) => (
+                <ActionRow
+                  key={slot.id}
+                  icon={Mic2}
+                  tint="#3A2F22"
+                  color="#E9B872"
+                  title={`${slot.project.owner?.name || "Alguém"} te chamou para tocar em “${slot.project.name}”`}
+                  text={[slot.role, slot.startTime && `às ${slot.startTime}`, eventDateLabel(slot.project.eventInfo?.startsAt)].filter(Boolean).join(" · ")}
+                >
+                  <button type="button" disabled={busy === slot.id} onClick={() => answerGig(slot, false)} className="btn-secondary min-h-[40px] text-sm">
+                    Recusar
+                  </button>
+                  <button type="button" disabled={busy === slot.id} onClick={() => answerGig(slot, true)} className="btn-primary min-h-[40px] text-sm">
+                    Confirmar
+                  </button>
+                </ActionRow>
+              ))}
             {data?.comments.map((group) => (
               <ActionRow
                 key={group.fileId}
@@ -243,7 +285,7 @@ export default function Home() {
                 title={`${event.title} hoje às ${hourLabel(event.startsAt)}`}
                 text={event.project?.name}
               >
-                <Link to={`/projects/${event.project?.id}?tab=agenda`} className="btn-primary min-h-[40px] text-sm no-underline hover:text-th-bg">
+                <Link to={agendaLink(event.project)} className="btn-primary min-h-[40px] text-sm no-underline hover:text-th-bg">
                   Ver detalhes
                 </Link>
               </ActionRow>
@@ -286,6 +328,42 @@ export default function Home() {
         </div>
 
         <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-6">
+          {events.length > 0 && (
+            <section aria-labelledby="eventos" className="card flex flex-col gap-3.5">
+              <div className="flex items-baseline">
+                <h2 id="eventos" className="flex-1 text-base font-semibold">
+                  Seus próximos eventos
+                </h2>
+                <Link to="/eventos" className="text-[13px]">
+                  Ver todos
+                </Link>
+              </div>
+              <ul className="flex flex-col gap-3">
+                {events.map((event) => {
+                  const stage = eventStageOf(event.status);
+                  const { total, confirmed } = event.lineup;
+                  return (
+                    <li key={event.id}>
+                      <Link to={`/eventos/${event.id}`} className="flex items-center gap-3 text-th-text no-underline hover:text-th-text">
+                        <Flyer event={event} className="h-14 w-11 flex-none rounded-lg" titleClass="text-[8px]" showKind={false} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold">{event.name}</span>
+                          <span className="block truncate text-xs text-th-muted">
+                            {eventDateLabel(event.eventInfo?.startsAt)} · {countdown(event.eventInfo?.startsAt)}
+                          </span>
+                          <span className="mt-0.5 flex items-center gap-1.5 text-xs text-th-text2">
+                            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: stage.color }} />
+                            {stage.label} · {total ? `${confirmed}/${total} no line-up` : "line-up vazio"}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
           <section aria-labelledby="agenda" className="card flex flex-col gap-3.5">
             <div className="flex items-baseline">
               <h2 id="agenda" className="flex-1 text-base font-semibold">

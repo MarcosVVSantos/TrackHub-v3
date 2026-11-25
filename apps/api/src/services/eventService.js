@@ -59,6 +59,7 @@ const MEMBER_SELECT = {
   roleLabel: true,
   status: true,
   inviteEmail: true,
+  calendarShareStatus: true,
   createdAt: true,
   user: { select: PUBLIC_USER_SELECT },
 };
@@ -168,7 +169,10 @@ async function listEvents(userId, { when = "upcoming" } = {}) {
       ownerId: true,
       updatedAt: true,
       eventInfo: true,
-      lineup: { select: { status: true } },
+      lineup: {
+        select: { status: true, name: true, user: { select: PUBLIC_USER_SELECT } },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      },
       tasks: { select: { done: true } },
       members: { where: { userId, status: "accepted" }, select: { role: true } },
     },
@@ -179,6 +183,11 @@ async function listEvents(userId, { when = "upcoming" } = {}) {
     ...project,
     myRole: project.ownerId === userId ? "owner" : members[0]?.role === "owner" ? "editor" : members[0]?.role || "viewer",
     lineup: lineupCounts(lineup),
+    // Só nome e foto de quem não recusou, para os avatares do card. Sem cachê.
+    lineupPreview: lineup
+      .filter((slot) => slot.status !== "declined")
+      .slice(0, 4)
+      .map((slot) => ({ name: slot.user?.name || slot.name, user: slot.user || null })),
     checklist: { total: tasks.length, done: tasks.filter((task) => task.done).length },
   }));
 }
@@ -195,7 +204,10 @@ async function getEvent(userId, projectId) {
       lineup: { select: SLOT_SELECT, orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
       tasks: { include: { assignee: { select: PUBLIC_USER_SELECT } }, orderBy: [{ done: "asc" }, { dueDate: "asc" }] },
       events: {
-        include: { participants: { include: { user: { select: PUBLIC_USER_SELECT } } } },
+        include: {
+          participants: { include: { user: { select: PUBLIC_USER_SELECT } } },
+          createdBy: { select: PUBLIC_USER_SELECT },
+        },
         orderBy: { startsAt: "asc" },
       },
       _count: { select: { files: true } },

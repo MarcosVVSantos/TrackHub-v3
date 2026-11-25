@@ -15,6 +15,8 @@ import {
   Plus,
   Search,
   Settings,
+  Ticket,
+  ChevronDown,
   UserRound,
   UsersRound,
   X,
@@ -31,6 +33,7 @@ import { timeAgo } from "../../lib/format";
 const CREATE = [
   { to: "/inicio", label: "Início", icon: Home },
   { to: "/projects", label: "Meus projetos", icon: Columns3 },
+  { to: "/eventos", label: "Eventos", icon: Ticket, badge: "lineup" },
   { to: "/playlists", label: "Playlists", icon: ListMusic },
   { to: "/calendar", label: "Agenda", icon: CalendarDays },
 ];
@@ -81,6 +84,68 @@ function NavItem({ item, count, onNavigate }) {
   );
 }
 
+// "Novo projeto" abre um menu: faixa ou evento.
+function NewMenu({ onNavigate }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onClick(event) {
+      if (!ref.current?.contains(event.target)) setOpen(false);
+    }
+    function onKey(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const items = [
+    { to: "/projects?novo=1", icon: Music2, color: "#D49AE6", title: "Faixa", text: "Versões, comentários e parceiros" },
+    { to: "/eventos?novo=1", icon: Ticket, color: "#E9B872", title: "Evento", text: "Batalha, show, open mic ou festa" },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)} className="btn-primary w-full">
+        <Plus size={18} aria-hidden="true" />
+        Novo projeto
+        <ChevronDown size={16} aria-hidden="true" className="ml-auto" />
+      </button>
+      {open && (
+        <div role="menu" aria-label="O que você vai criar?" className="absolute left-0 right-0 top-[52px] z-20 flex flex-col gap-0.5 rounded-[14px] border border-th-line2 bg-th-surface p-1.5 shadow-2xl">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.to}
+                role="menuitem"
+                to={item.to}
+                onClick={() => {
+                  setOpen(false);
+                  onNavigate?.();
+                }}
+                className="flex min-h-[56px] items-start gap-3 rounded-[10px] px-3 py-2.5 no-underline hover:bg-th-raised"
+              >
+                <Icon size={20} aria-hidden="true" style={{ color: item.color }} className="mt-0.5" />
+                <span className="flex flex-col gap-0.5">
+                  <span className="font-semibold text-th-text">{item.title}</span>
+                  <span className="text-xs text-th-muted">{item.text}</span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Sidebar({ counts, onNavigate }) {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -88,16 +153,13 @@ function Sidebar({ counts, onNavigate }) {
   return (
     <div className="flex h-full flex-col gap-7 px-4 py-6">
       <Logo />
-      <Link to="/projects?novo=1" onClick={onNavigate} className="btn-primary no-underline hover:text-th-bg">
-        <Plus size={18} aria-hidden="true" />
-        Novo projeto
-      </Link>
+      <NewMenu onNavigate={onNavigate} />
 
       <nav aria-label="Principal" className="flex flex-col gap-5">
         <div className="flex flex-col gap-0.5">
           <p className="eyebrow mb-1.5 px-3">Criar</p>
           {CREATE.map((item) => (
-            <NavItem key={item.to} item={item} onNavigate={onNavigate} />
+            <NavItem key={item.to} item={item} count={counts[item.badge] || 0} onNavigate={onNavigate} />
           ))}
         </div>
         <div className="flex flex-col gap-0.5">
@@ -292,15 +354,20 @@ export default function AppShell({ children }) {
   const { unreadCount: chatUnread } = useChat();
   const [drawer, setDrawer] = useState(false);
   const [invites, setInvites] = useState(0);
+  const [lineupInvites, setLineupInvites] = useState(0);
 
   useEffect(() => {
     setDrawer(false);
     apiRequest("/projects/invites")
       .then((list) => setInvites(Array.isArray(list) ? list.length : 0))
       .catch(() => {});
+    // Convites para tocar em eventos que ainda não foram respondidos.
+    apiRequest("/events/lineup-invites")
+      .then((list) => setLineupInvites(Array.isArray(list) ? list.filter((item) => item.status === "invited").length : 0))
+      .catch(() => {});
   }, [location.pathname]);
 
-  const counts = { invites, chat: chatUnread || 0 };
+  const counts = { invites, chat: chatUnread || 0, lineup: lineupInvites };
   const hasPlayer = Boolean(player?.current);
 
   return (
