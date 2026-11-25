@@ -36,6 +36,11 @@ export default function Login() {
         </>
       }
     >
+      {location.state?.notice && (
+        <p role="status" className="mb-4 rounded-[10px] border border-stage-finished/40 bg-stage-finished/10 px-3.5 py-2.5 text-sm text-stage-finished">
+          {location.state.notice}
+        </p>
+      )}
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div>
           <label className="label" htmlFor="li-email">
@@ -44,9 +49,14 @@ export default function Login() {
           <input id="li-email" className="input" type="email" autoComplete="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
         </div>
         <div>
-          <label className="label" htmlFor="li-pass">
-            Senha
-          </label>
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <label className="label mb-0" htmlFor="li-pass">
+              Senha
+            </label>
+            <Link to="/esqueci-senha" className="text-[13px]">
+              Esqueci minha senha
+            </Link>
+          </div>
           <input
             id="li-pass"
             className="input"
