@@ -154,7 +154,7 @@ function buildRanking(projectStats) {
 async function getDashboardMetrics(userId, periodKey) {
   const period = resolvePeriod(periodKey);
   const projects = await prisma.project.findMany({
-    where: { ownerId: userId, archivedAt: null },
+    where: { ownerId: userId, archivedAt: null, kind: "track" },
     select: { id: true, status: true, createdAt: true, name: true },
   });
 

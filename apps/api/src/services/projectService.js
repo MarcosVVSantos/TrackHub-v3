@@ -17,7 +17,8 @@ const MEMBER_SELECT = {
   user: { select: PUBLIC_USER_SELECT },
 };
 
-async function listProjects(userId, { tags, status } = {}) {
+// Por padrão lista só faixas; eventos têm a própria lista (/events).
+async function listProjects(userId, { tags, status, kind = "track" } = {}) {
   const statusFilter = status?.length ? { in: status } : undefined;
   const tagClauses = tags?.length
     ? tags.map((tag) => ({ tags: { array_contains: [tag] } }))
@@ -29,6 +30,7 @@ async function listProjects(userId, { tags, status } = {}) {
       { members: { some: { userId, status: "accepted" } } },
     ],
     archivedAt: null,
+    kind,
     status: statusFilter,
     ...(tagClauses.length ? { AND: [{ OR: tagClauses }] } : {}),
   };
@@ -233,6 +235,11 @@ async function updateProject(userId, projectId, rawData) {
     const error = new Error("Sem permissão para editar o projeto");
     error.status = 403;
     throw error;
+  }
+
+  // A página pública de evento tem regras próprias (sem cachê, sem status do line-up).
+  if (project.kind === "event" && data.isPublic !== undefined) {
+    throw httpError(400, "Para publicar um evento, use a página do evento");
   }
 
   if (data.isPublic && !data.coverUrl && !project.coverUrl) {

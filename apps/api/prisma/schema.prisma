@@ -24,6 +24,26 @@ enum ProjectStatus {
   finished
 }
 
+// Um projeto pode ser uma faixa (o padrão) ou um evento (show, batalha, open mic...).
+enum ProjectKind {
+  track
+  event
+}
+
+enum EventType {
+  show
+  battle
+  open_mic
+  party
+  other
+}
+
+enum LineupStatus {
+  invited
+  confirmed
+  declined
+}
+
 enum MemberRole {
   owner
   editor
@@ -71,6 +91,9 @@ enum NotificationType {
   comment
   upload
   status_change
+  lineup_invite
+  lineup_accept
+  lineup_decline
 }
 
 model User {
@@ -123,6 +146,7 @@ model User {
   subscription         Subscription?
   tasksAssigned        TaskCard[]     @relation("TaskAssignee")
   fileComments         FileComment[]
+  lineupSlots          LineupSlot[]
 }
 
 model RefreshToken {
@@ -152,6 +176,7 @@ model Project {
   name        String
   description String?
   status      ProjectStatus       @default(idea)
+  kind        ProjectKind         @default(track)
   order       Int                 @default(0)
   tags        Json?
   isPublic    Boolean             @default(false)
@@ -171,6 +196,57 @@ model Project {
   tracks      Track[]
   socialPosts SocialPost[]
   events      ProjectEvent[]
+  eventInfo   EventInfo?
+  lineup      LineupSlot[]
+
+  @@index([ownerId, kind])
+}
+
+// Dados que só um projeto do tipo evento tem.
+// Etapas do evento usam o mesmo status do projeto:
+// idea = Planejamento, in_progress = Divulgação, production = Confirmado, finished = Realizado.
+model EventInfo {
+  projectId    String    @id
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // Endereço da página pública: /e/<slug>
+  slug         String    @unique
+  type         EventType @default(show)
+  startsAt     DateTime
+  endsAt       DateTime?
+  venueName    String?
+  venueAddress String?
+  ticketUrl    String?
+  // Chamada aberta para artistas se inscreverem.
+  callOpen     Boolean   @default(false)
+  callDeadline DateTime?
+  callSlots    Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([startsAt])
+}
+
+// Uma atração do line-up. Pode ter conta no TrackHub (userId) ou não (só o nome).
+// O cachê (feeCents) é visível só para o dono e os editores do evento.
+model LineupSlot {
+  id        String       @id @default(cuid())
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  role      String
+  startTime String?
+  position  Int          @default(0)
+  status    LineupStatus @default(invited)
+  feeCents  Int?
+  notes     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([projectId, position])
+  @@index([userId, status])
 }
 
 model ProjectMember {
