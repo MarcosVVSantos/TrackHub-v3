@@ -150,6 +150,7 @@ async function createSession(user) {
 }
 
 module.exports = {
+  createSession,
   register,
   login,
   refresh,

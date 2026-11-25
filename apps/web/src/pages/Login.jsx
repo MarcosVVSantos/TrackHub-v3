@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AuthLayout from "../components/layout/AuthLayout";
 import { ErrorNote } from "../components/ui/States";
+import GoogleButton, { OrDivider } from "../components/auth/GoogleButton";
+import useGoogleSignIn from "../components/auth/useGoogleSignIn";
 
 export default function Login() {
   const { login } = useAuth();
@@ -11,6 +13,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const google = useGoogleSignIn();
 
   async function submit(event) {
     event.preventDefault();
@@ -41,6 +44,10 @@ export default function Login() {
           {location.state.notice}
         </p>
       )}
+      <GoogleButton onCredential={google.signIn} text="signin_with" />
+      {google.loading && <p className="mt-2 text-center text-sm text-th-muted">Entrando com Google…</p>}
+      <ErrorNote>{google.error}</ErrorNote>
+      <OrDivider />
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div>
           <label className="label" htmlFor="li-email">

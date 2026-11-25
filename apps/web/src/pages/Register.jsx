@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AuthLayout from "../components/layout/AuthLayout";
 import { ErrorNote } from "../components/ui/States";
+import GoogleButton, { OrDivider, googleLoginEnabled } from "../components/auth/GoogleButton";
+import useGoogleSignIn from "../components/auth/useGoogleSignIn";
 
 const FIELDS = [
   { id: "name", label: "Nome", autoComplete: "name" },
@@ -17,6 +19,7 @@ export default function Register() {
   const [form, setForm] = useState({ name: "", username: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const google = useGoogleSignIn();
 
   async function submit(event) {
     event.preventDefault();
@@ -42,6 +45,16 @@ export default function Register() {
         </>
       }
     >
+      <GoogleButton onCredential={google.signIn} text="signup_with" />
+      {googleLoginEnabled && (
+        <p className="mt-2 text-center text-xs text-th-muted">
+          Ao continuar com o Google, você aceita os <Link to="/termos" target="_blank">Termos de uso</Link> e a{" "}
+          <Link to="/privacidade" target="_blank">Política de privacidade</Link>.
+        </p>
+      )}
+      {google.loading && <p className="mt-2 text-center text-sm text-th-muted">Criando sua conta…</p>}
+      <ErrorNote>{google.error}</ErrorNote>
+      <OrDivider />
       <form onSubmit={submit} className="flex flex-col gap-4">
         {FIELDS.map((field) => (
           <div key={field.id}>
