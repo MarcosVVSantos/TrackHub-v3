@@ -99,6 +99,7 @@ model User {
   trackComments TrackComment[]
   trackLikes    TrackLike[]
   refreshTokens RefreshToken[]
+  passwordResets PasswordResetToken[]
   notifications Notification[]
   notificationsSent Notification[] @relation("NotificationActor")
   fileUploads   FileAsset[]
@@ -129,6 +130,19 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id])
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// Link de "esqueci minha senha". Guardamos só o hash do token (igual ao refresh token).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Project {
