@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Music2 } from "lucide-react";
+import LogoMark from "../ui/LogoMark";
 import { useAuth } from "../../context/AuthContext";
 
 // Moldura das páginas abertas de evento: sem menu do app, com logo e "Entrar".
@@ -11,9 +11,7 @@ export default function PublicShell({ children, back }) {
         <div className="mx-auto flex w-full max-w-[1200px] items-center gap-3 px-6 py-3.5">
           {back}
           <Link to={user ? "/inicio" : "/"} className={`flex items-center gap-2.5 text-th-text no-underline hover:text-th-text ${back ? "ml-auto" : ""}`}>
-            <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-white text-th-bg">
-              <Music2 size={18} aria-hidden="true" />
-            </span>
+            <LogoMark size={32} />
             <span className="text-[17px] font-bold">TrackHub</span>
           </Link>
           {!back && (

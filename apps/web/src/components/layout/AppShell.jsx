@@ -28,6 +28,7 @@ import { usePlayer } from "../../context/PlayerContext";
 import { apiRequest } from "../../api/client";
 import { Avatar } from "../ui/Avatar";
 import { timeAgo } from "../../lib/format";
+import LogoMark from "../ui/LogoMark";
 
 // Navegação do redesign: dois grupos, pensados pelo que a pessoa quer fazer.
 const CREATE = [
@@ -48,9 +49,7 @@ const CONNECT = [
 function Logo() {
   return (
     <Link to="/inicio" className="flex items-center gap-2.5 px-2 text-th-text no-underline hover:text-th-text">
-      <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-white text-th-bg">
-        <Music2 size={20} aria-hidden="true" />
-      </span>
+      <LogoMark size={36} />
       <span className="text-[19px] font-bold tracking-tight">TrackHub</span>
     </Link>
   );

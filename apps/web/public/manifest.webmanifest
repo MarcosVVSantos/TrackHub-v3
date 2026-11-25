@@ -1,0 +1,14 @@
+{
+  "name": "TrackHub",
+  "short_name": "TrackHub",
+  "description": "Onde produtores e artistas criam faixas juntos, do rascunho ao master.",
+  "start_url": "/inicio",
+  "display": "standalone",
+  "background_color": "#141217",
+  "theme_color": "#141217",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
