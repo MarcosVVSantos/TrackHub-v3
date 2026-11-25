@@ -4,6 +4,7 @@ const { ensureProjectRole } = require("./accessService");
 const { withResolvedUrls, resolveFileUrl } = require("./storageService");
 const { PUBLIC_USER_SELECT } = require("../utils/publicUser");
 const { parseAudioMeta } = require("../utils/audioMeta");
+const { syncProjectTrackSafe } = require("./trackSyncService");
 
 const MAX_VERSION_LENGTH = 30;
 
@@ -58,6 +59,9 @@ async function addProjectFile({ projectId, uploaderId, file, versionName, meta }
       link: `/projects/${projectId}`,
     });
   }
+
+  // Primeiro áudio de um projeto público cria a faixa pública.
+  if (String(file.mimetype).startsWith("audio/")) await syncProjectTrackSafe(projectId);
 
   return { ...asset, url: await resolveFileUrl(asset.url) };
 }

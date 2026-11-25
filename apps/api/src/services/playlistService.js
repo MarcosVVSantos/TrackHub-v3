@@ -1,5 +1,6 @@
 const prisma = require("../lib/prisma");
 const { withResolvedUrls } = require("./storageService");
+const { backfillPublicTracks } = require("./trackSyncService");
 const { PUBLIC_USER_SELECT } = require("../utils/publicUser");
 
 const MAX_NAME_LENGTH = 100;
@@ -270,11 +271,14 @@ async function reorderTracks(userId, playlistId, orderedTrackIds) {
 
 // Busca tracks públicas de projetos de outros usuários
 async function searchPublicTracks(userId, query = "", playlistId = null) {
+  // Garante que projetos públicos antigos já tenham a sua faixa pública.
+  await backfillPublicTracks();
   const where = {
     isPublic: true,
+    // Suas faixas públicas também podem entrar nas suas playlists.
     project: {
       isPublic: true,
-      ownerId: { not: userId }, // apenas de outros usuários
+      archivedAt: null,
     },
     ...(query.trim()
       ? {

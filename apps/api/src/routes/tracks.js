@@ -5,6 +5,7 @@ const controller = require("../controllers/feedController");
 
 const router = express.Router();
 
+router.get("/:id/audio", controller.streamTrackAudio);
 router.get("/:id", optionalAuth, controller.getTrack);
 router.patch("/:id", authenticate, controller.updateTrack);
 router.post("/:id/like", authenticate, controller.likeTrack);

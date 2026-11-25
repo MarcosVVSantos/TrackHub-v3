@@ -117,7 +117,7 @@ export default function AddTrackModal({ open, playlistId, onClose, onChanged }) 
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <div>
             <h3 className="text-lg font-semibold text-th-lilac">Adicionar tracks</h3>
-            <p className="text-xs text-th-muted">Projetos públicos de outros artistas</p>
+            <p className="text-xs text-th-muted">Faixas públicas: suas e de outros artistas</p>
           </div>
           <button type="button" onClick={onClose}>
             <X size={18} />

@@ -7,7 +7,8 @@ const config = {
   jwtAccessExpires: process.env.JWT_ACCESS_EXPIRES || "15m",
   jwtRefreshExpires: process.env.JWT_REFRESH_EXPIRES || "7d",
   uploadDir: process.env.UPLOAD_DIR || "uploads",
-  publicUrl: process.env.PUBLIC_URL || "http://localhost:4000",
+  // URL pública da API. No Render, RENDER_EXTERNAL_URL já vem preenchida automaticamente.
+  publicUrl: process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "http://localhost:4000",
   webUrl: process.env.WEB_URL || "http://localhost:5173",
   rootDir: path.resolve(__dirname, ".."),
 };

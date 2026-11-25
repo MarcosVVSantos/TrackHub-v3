@@ -3,6 +3,7 @@ const { createNotification } = require("./notificationService");
 const { ensureProjectMember, ASSIGNABLE_ROLES, httpError } = require("./accessService");
 const { PUBLIC_USER_SELECT } = require("../utils/publicUser");
 const { parseProjectInput } = require("../utils/projectInput");
+const { syncProjectTrackSafe } = require("./trackSyncService");
 
 const MEMBER_SELECT = {
   id: true,
@@ -64,7 +65,12 @@ async function listProjects(userId, { tags, status } = {}) {
 }
 
 async function getProjectAudio(userId, projectId) {
-  await ensureProjectMember(userId, projectId);
+  // Projeto público: qualquer pessoa logada pode ouvir a versão mais recente.
+  const isPublic = await prisma.project.findFirst({
+    where: { id: projectId, isPublic: true, archivedAt: null },
+    select: { id: true },
+  });
+  if (!isPublic) await ensureProjectMember(userId, projectId);
   const file = await prisma.fileAsset.findFirst({
     where: {
       projectId,
@@ -82,7 +88,47 @@ async function getProjectAudio(userId, projectId) {
   return file;
 }
 
+// O que um visitante (não participante) pode ver de um projeto público:
+// dados de apresentação, equipe e só a versão de áudio mais recente.
+// Tarefas, agenda, mural, histórico e versões antigas continuam só para a equipe.
+const PUBLIC_PROJECT_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  status: true,
+  tags: true,
+  bpm: true,
+  coverUrl: true,
+  isPublic: true,
+  ownerId: true,
+  createdAt: true,
+  updatedAt: true,
+  owner: { select: PUBLIC_USER_SELECT },
+  members: {
+    where: { status: "accepted" },
+    select: { id: true, userId: true, role: true, roleLabel: true, status: true, user: { select: PUBLIC_USER_SELECT } },
+  },
+  files: {
+    where: { type: { startsWith: "audio/" } },
+    include: { versions: true, uploader: { select: PUBLIC_USER_SELECT } },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+  },
+  tracks: { where: { isPublic: true } },
+};
+
 async function getProject(userId, projectId) {
+  const project = await getProjectAsMember(userId, projectId);
+  if (project) return { ...project, access: project.ownerId === userId ? "owner" : "member" };
+
+  const publicProject = await prisma.project.findFirst({
+    where: { id: projectId, isPublic: true, archivedAt: null },
+    select: PUBLIC_PROJECT_SELECT,
+  });
+  return publicProject ? { ...publicProject, access: "public" } : null;
+}
+
+async function getProjectAsMember(userId, projectId) {
   return prisma.project.findFirst({
     where: {
       id: projectId,
@@ -252,6 +298,11 @@ async function updateProject(userId, projectId, rawData) {
     }
   }
 
+  // Mantém a faixa pública (playlists/feed) em dia com nome, capa e visibilidade.
+  if (data.isPublic !== undefined || data.coverUrl || data.name || data.description !== undefined) {
+    await syncProjectTrackSafe(projectId);
+  }
+
   return updated;
 }
 
@@ -269,10 +320,12 @@ async function archiveProject(userId, projectId) {
     throw error;
   }
 
-  return prisma.project.update({
+  const archived = await prisma.project.update({
     where: { id: projectId },
     data: { archivedAt: new Date() },
   });
+  await syncProjectTrackSafe(projectId);
+  return archived;
 }
 
 async function updateProjectOrder(userId, projectId, { order, status }) {
