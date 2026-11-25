@@ -20,13 +20,15 @@ async function syncProjectTrack(projectId) {
       coverUrl: true,
       isPublic: true,
       archivedAt: true,
+      kind: true,
       files: { where: { type: { startsWith: "audio/" } }, select: { id: true }, take: 1 },
       tracks: { select: { id: true }, orderBy: { createdAt: "asc" } },
     },
   });
   if (!project) return null;
 
-  const visible = project.isPublic && !project.archivedAt && Boolean(project.coverUrl) && project.files.length > 0;
+  // Evento nunca vira faixa, mesmo que tenha áudio nos arquivos.
+  const visible = project.kind !== "event" && project.isPublic && !project.archivedAt && Boolean(project.coverUrl) && project.files.length > 0;
   if (!visible) {
     if (project.tracks.length) {
       await prisma.track.updateMany({ where: { projectId }, data: { isPublic: false } });
@@ -59,6 +61,7 @@ async function backfillPublicTracks(limit = 50) {
       where: {
         isPublic: true,
         archivedAt: null,
+        kind: "track",
         coverUrl: { not: null },
         tracks: { none: {} },
         files: { some: { type: { startsWith: "audio/" } } },

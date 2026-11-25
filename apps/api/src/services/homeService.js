@@ -61,7 +61,7 @@ async function recentComments(userId) {
 
 async function continueProjects(userId) {
   const projects = await prisma.project.findMany({
-    where: myProjectsWhere(userId),
+    where: { ...myProjectsWhere(userId), kind: "track" },
     orderBy: { updatedAt: "desc" },
     take: 4,
     select: {
@@ -109,7 +109,7 @@ async function getHome(userId) {
     calendarService.listCalendarOverview(userId),
     continueProjects(userId),
     userService.listSuggestions(userId, 3),
-    prisma.project.count({ where: myProjectsWhere(userId) }),
+    prisma.project.count({ where: { ...myProjectsWhere(userId), kind: "track" } }),
   ]);
 
   return {

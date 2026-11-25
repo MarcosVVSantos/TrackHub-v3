@@ -17,6 +17,7 @@ if (!BigInt.prototype.toJSON) {
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
 const projectRoutes = require("./routes/projects");
+const eventRoutes = require("./routes/events");
 const feedRoutes = require("./routes/feed");
 const trackRoutes = require("./routes/tracks");
 const dashboardRoutes = require("./routes/dashboard");
@@ -50,6 +51,7 @@ app.use(healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/projects", projectRoutes);
+app.use("/events", eventRoutes);
 app.use("/feed", feedRoutes);
 app.use("/tracks", trackRoutes);
 app.use("/dashboard", dashboardRoutes);
